@@ -7,4 +7,5 @@ import reactor.core.publisher.Flux
 interface FolderRepository: ReactiveCrudRepository<Folder, Long> {
     fun findByUserId(userId: Long): Flux<Folder>
     fun findByUserIdAndParentId(userId: Long, parentId: Long?): Flux<Folder>
+    fun deleteFolderByIdAndUserId(id: Long, userId: Long): Flux<Folder>
 }

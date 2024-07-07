@@ -74,4 +74,25 @@ class FileService(
     fun getFileById(id: Long): Mono<File> {
         return fileRepository.findById(id)
     }
+
+    /**
+     * 删除文件
+     * 包含从数据库中删除和从磁盘中删除
+     */
+    fun deleteFile(userId: Int, id: Long): Mono<Void> {
+        return fileRepository.findById(id)
+            .filter { it.userId == userId }
+            .flatMap { file ->
+                val path = Paths.get(uploadPath, file.pathName)
+                Mono.fromCallable {
+                    Files.delete(path)
+                }.publishOn(Schedulers.boundedElastic())
+                    .then(fileRepository.deleteById(id))
+            }
+            .onErrorResume { error ->
+                error.printStackTrace()
+                Mono.error(error)
+            }
+    }
+
 }

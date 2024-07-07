@@ -46,13 +46,6 @@ class ReactorNetdiskApplicationTests {
     }
 
     @Test
-    fun getFileOnDBTest() {
-        fileRepository.findByUserId(1).collectList().block()?.forEach {
-            println(it)
-        }
-    }
-
-    @Test
     fun getMimeTypeTest() {
         val fileList = arrayOf(
             "a.txt",
