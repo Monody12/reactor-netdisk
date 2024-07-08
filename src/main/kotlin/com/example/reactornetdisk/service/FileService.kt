@@ -28,11 +28,15 @@ class FileService(
     /**
      * 保存文件到磁盘
      */
-    fun saveFiles(filePartFlux: Flux<FilePart>): Mono<String> {
+    fun saveFiles(
+        filePartFlux: Flux<FilePart>,
+        folderId: Long? = null,
+        userId: Int
+    ): Mono<String> {
         val localDate = LocalDate.now()
         val datePath = UploadUtil.getDatePath(java.io.File.separator, localDate)
         val baseDir = Paths.get(uploadPath, datePath)
-
+        // TODO 验证文件夹是否存在，不存在则抛出异常
         return filePartFlux.flatMap { part ->
             val filename = part.filename()
             val randomName = UUID.randomUUID().toString().replace("-", "")
@@ -47,16 +51,15 @@ class FileService(
                         part.transferTo(file)
                         .then(Mono.fromCallable { Files.size(file) })
                         .flatMap { fileSize ->
-                            fileRepository.save(
-                                File(
-                                    name = filename,
-                                    pathName = UploadUtil.getDatePath("/", localDate) + "/" + randomName,
-                                    userId = 1,
-                                    folderId = null,
-                                    size = fileSize,
-                                    mimeType = part.headers().contentType?.toString()
-                                )
+                            val insertFile = File(
+                                name = filename,
+                                pathName = UploadUtil.getDatePath("/", localDate) + "/" + randomName,
+                                userId = userId,
+                                folderId = folderId,
+                                size = fileSize,
+                                mimeType = part.headers().contentType?.toString()
                             )
+                            fileRepository.save(insertFile)
                         }
                         .thenReturn("File uploaded successfully: $filename")
                 }

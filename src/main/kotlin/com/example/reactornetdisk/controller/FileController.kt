@@ -32,9 +32,13 @@ class FileController(
     @PostMapping("/upload")
     fun uploadFiles(
         @RequestPart("files") filePartFlux: Flux<FilePart>,
-
-        ): Mono<ApiResponse<String>> {
-        return fileService.saveFiles(filePartFlux).map {
+        @RequestParam(required = false) folderId: Long?
+    ): Mono<ApiResponse<String>> {
+        return fileService.saveFiles(
+            filePartFlux = filePartFlux,
+            folderId = folderId,
+            userId = 1
+        ).map {
             ApiResponse(200, "上传完成", it)
         }
     }
@@ -72,6 +76,7 @@ class FileController(
                                     println("IO error during file download: ${e.message}")
                                     Mono.empty()
                                 }
+
                                 else -> Mono.error(e)
                             }
                         }

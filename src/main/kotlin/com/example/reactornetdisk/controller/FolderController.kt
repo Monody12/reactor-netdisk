@@ -45,8 +45,11 @@ class FolderController(
         @RequestParam(required = false) fileIdList: List<Long>?,
         @RequestParam(required = false) folderIdList: List<Long>?
     ): Mono<String> {
-        TODO("Not yet implemented")
-        return Mono.empty()
+        return folderService.deleteFileAndFolder(
+            userId = 1,
+            fileIdList = fileIdList,
+            folderIdList = folderIdList
+        )
     }
 
 }

@@ -4,7 +4,7 @@ import org.springframework.data.relational.core.mapping.Table
 
 @Table("folder")
 class Folder(
-    override var userId: Int,
+    var userId: Int,
     var parentId: Long?,
     var name: String
 ):BaseFile()

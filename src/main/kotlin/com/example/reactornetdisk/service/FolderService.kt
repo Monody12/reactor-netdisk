@@ -138,6 +138,7 @@ class FolderService(
         // 删除当前文件夹下的子文件夹
         val deleteSubFolders = folderRepository.findByUserIdAndParentId(userId, folderId)
             .flatMap { folder ->
+                // 递归调用
                 deleteFolderContents(userId, folder.id!!, deletedFileCount, deletedFolderCount)
                     .then(folderRepository.deleteById(folder.id!!))
                     .doOnSuccess { deletedFolderCount.incrementAndGet() }
