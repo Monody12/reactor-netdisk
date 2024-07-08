@@ -1,13 +1,10 @@
 package com.example.reactornetdisk.entity
 
-import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
-import java.time.LocalDateTime
 
 @Table("file")
-data class File(
-    @Id val id: Long? = null,
-    val userId: Int,
+class File (
+    override var userId: Int,
     /**
      * 文件夹ID，如果为null则表示在根目录
      */
@@ -24,8 +21,5 @@ data class File(
      * 文件大小，单位字节
      */
     val size: Long,
-    val mimeType: String?,
-    val createdAt: LocalDateTime? = LocalDateTime.now(),
-    val updatedAt: LocalDateTime? = LocalDateTime.now(),
-    val deleteFlag: Boolean = false
-)
+    val mimeType: String?
+): BaseFile()

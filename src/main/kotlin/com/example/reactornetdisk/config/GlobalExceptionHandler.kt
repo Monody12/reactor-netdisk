@@ -15,6 +15,7 @@ import reactor.core.publisher.Mono
 class GlobalExceptionHandler {
     @ExceptionHandler(UserException::class)
     fun handleUserException(ex: UserException): Mono<ResponseEntity<ApiResponse<out String>>> {
+        ex.printStackTrace()
         val response = when (ex) {
             is UserNotFoundException -> ApiResponse(404, ex.message ?: "用户不存在", null)
             is InvalidPasswordException -> ApiResponse(401, ex.message ?: "密码错误", null)
@@ -25,6 +26,7 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(FileException::class)
     fun handleFileException(ex: FileException): Mono<ResponseEntity<ApiResponse<out String>>> {
+        ex.printStackTrace()
         val response = when (ex) {
             is FileNotFoundInDatabaseException -> ApiResponse(404, ex.message ?: "", null)
             is FileNotFoundInFileSystemException -> ApiResponse(500, ex.message ?: "", null)
@@ -35,12 +37,14 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(NoResourceFoundException::class)
     fun handleNoResourceFoundException(ex: NoResourceFoundException): Mono<ResponseEntity<ApiResponse<String>>> {
+        ex.printStackTrace()
         val response = ApiResponse(404, "资源未找到", ex.localizedMessage)
         return Mono.just(ResponseEntity(response, HttpStatus.OK))
     }
 
     @ExceptionHandler(ServerWebInputException::class)
     fun handleServerWebInputException(ex: ServerWebInputException): Mono<ResponseEntity<ApiResponse<String>>> {
+        ex.printStackTrace()
         val response = ApiResponse(400, "请求参数错误", ex.localizedMessage)
         return Mono.just(ResponseEntity(response, HttpStatus.OK))
     }

@@ -6,7 +6,6 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 interface FileRepository: ReactiveCrudRepository<File, Long> {
-
-    fun findByUserIdAndFolderId(userId: Long, folderId: Long?): Flux<File>
-    fun deleteByUserIdAndId(userId: Long, id: Long): Mono<Void>
+    fun findByUserIdAndFolderId(userId: Int, folderId: Long?): Flux<File>
+    fun deleteByUserIdAndId(userId: Int, id: Long): Mono<Void>
 }
