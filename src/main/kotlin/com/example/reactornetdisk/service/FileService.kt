@@ -1,6 +1,7 @@
 package com.example.reactornetdisk.service
 
 import com.example.reactornetdisk.entity.File
+import com.example.reactornetdisk.exception.FolderNotFoundException
 import com.example.reactornetdisk.repository.FileRepository
 import com.example.reactornetdisk.repository.FolderRepository
 import com.example.reactornetdisk.util.UploadUtil
@@ -36,39 +37,49 @@ class FileService(
         val localDate = LocalDate.now()
         val datePath = UploadUtil.getDatePath(java.io.File.separator, localDate)
         val baseDir = Paths.get(uploadPath, datePath)
-        // TODO 验证文件夹是否存在，不存在则抛出异常
-        return filePartFlux.flatMap { part ->
-            val filename = part.filename()
-            val randomName = UUID.randomUUID().toString().replace("-", "")
-            val destFile = baseDir.resolve(randomName)
+        // 验证文件夹是否存在，不存在则抛出异常（为null表示传根目录不校验）
+        return (if (folderId != null) {
+            folderRepository.findById(folderId)
+                .switchIfEmpty(Mono.error(FolderNotFoundException()))
+        } else {
+            Mono.just(Unit)
+        }).flatMap {
+                filePartFlux
+                    .flatMap { part ->
+                        val filename = part.filename()
+                        val randomName = UUID.randomUUID().toString().replace("-", "")
+                        val destFile = baseDir.resolve(randomName)
 
-            Mono.fromCallable {
-                Files.createDirectories(destFile.parent)
-                destFile
-            }.publishOn(Schedulers.boundedElastic())
-                .flatMap { file ->
-//                    uploadFileInChunks(part, file)
-                        part.transferTo(file)
-                        .then(Mono.fromCallable { Files.size(file) })
-                        .flatMap { fileSize ->
-                            val insertFile = File(
-                                name = filename,
-                                pathName = UploadUtil.getDatePath("/", localDate) + "/" + randomName,
-                                userId = userId,
-                                folderId = folderId,
-                                size = fileSize,
-                                mimeType = part.headers().contentType?.toString()
-                            )
-                            fileRepository.save(insertFile)
-                        }
-                        .thenReturn("File uploaded successfully: $filename")
-                }
-        }.collectList().flatMap { results ->
-            Mono.just("Uploaded ${results.size} files: ${results.joinToString(", ")}")
-        }.onErrorResume { error ->
-            error.printStackTrace()
-            Mono.just("Error uploading files: ${error.message}")
-        }
+                        Mono.fromCallable {
+                            Files.createDirectories(destFile.parent)
+                            destFile
+                        }.publishOn(Schedulers.boundedElastic())
+                            // 流转换，处理文件写入
+                            .flatMap { file ->
+                                part.transferTo(file)
+                                    .then(Mono.fromCallable { Files.size(file) })
+                                    .flatMap { fileSize ->
+                                        val insertFile = File(
+                                            name = filename,
+                                            pathName = UploadUtil.getDatePath("/", localDate) + "/" + randomName,
+                                            userId = userId,
+                                            folderId = folderId,
+                                            size = fileSize,
+                                            mimeType = part.headers().contentType?.toString()
+                                        )
+                                        fileRepository.save(insertFile)
+                                    }
+                                    .thenReturn("File uploaded successfully: $filename")
+                            }
+                    }
+                    // 流展平，将多个流合并为一个流（上传总结 ）
+                    .collectList().flatMap { results ->
+                        Mono.just("Uploaded ${results.size} files: ${results.joinToString(", ")}")
+                    }.onErrorResume { error ->
+                        error.printStackTrace()
+                        Mono.just("Error uploading files: ${error.message}")
+                    }
+            }
     }
 
     /**

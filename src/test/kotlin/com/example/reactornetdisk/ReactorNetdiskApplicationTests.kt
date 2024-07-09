@@ -65,11 +65,16 @@ class ReactorNetdiskApplicationTests {
             "sort.py",
             "sort.js",
             "index.html",
-            "hello.sss"
+            "hello.css"
         )
         fileList.forEach {
             val mimeType = Tika().detect(it)
             println("$it: $mimeType")
         }
+    }
+
+    @Test
+    fun deleteFolderTest() {
+
     }
 }
