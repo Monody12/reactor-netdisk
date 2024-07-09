@@ -25,7 +25,8 @@ import java.util.concurrent.atomic.AtomicLong
 @Service
 class FolderService(
     private val folderRepository: FolderRepository,
-    private val fileRepository: FileRepository
+    private val fileRepository: FileRepository,
+    @Value("\${file.upload.path}") private val uploadPath: String
 ) {
     /**
      * 创建文件夹
@@ -140,7 +141,7 @@ class FolderService(
             .flatMap { folder ->
                 // 递归调用
                 deleteFolderContents(userId, folder.id!!, deletedFileCount, deletedFolderCount)
-                    .then(folderRepository.deleteById(folder.id!!))
+                    .then(this.deleteFolderById(userId, folder.id!!))
                     .doOnSuccess { deletedFolderCount.incrementAndGet() }
             }
 
@@ -150,12 +151,24 @@ class FolderService(
     private fun deleteFileFromDisk(pathName: String): Mono<Void> {
         return Mono.fromRunnable {
             try {
-                Files.deleteIfExists(Paths.get(pathName))
+                Files.deleteIfExists(Paths.get(uploadPath, pathName))
             } catch (e: Exception) {
                 e.printStackTrace()
                 // 在实际应用中，您可能希望记录这个错误，或者以某种方式处理它
                 println("Failed to delete file: $pathName. Error: ${e.message}")
             }
         }
+    }
+
+    fun deleteFolderById(userId: Int, folderId: Long): Mono<Void> {
+        return folderRepository.deleteByIdAndUserId(folderId,userId)
+            // 如果没有找到文件夹，返回抛出文件夹不存在异常
+            .flatMap { deletedFolder ->
+                if (deletedFolder) {
+                    Mono.error(Exception("Folder not found"))
+                } else {
+                    Mono.empty()
+                }
+            }
     }
 }
