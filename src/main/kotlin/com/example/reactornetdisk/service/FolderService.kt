@@ -114,10 +114,18 @@ class FolderService(
         }
 
         return Flux.fromIterable(folderIdList)
-            .flatMap { folderId ->
-                deleteFolderContents(userId, folderId, deletedFileCount, deletedFolderCount)
-                    .then(folderRepository.deleteById(folderId))
-                    .doOnSuccess { deletedFolderCount.incrementAndGet() }
+            // 如果文件夹不存在，跳过这个文件夹的删除操作
+            .flatMap {
+                folderId-> folderRepository.findByIdAndUserId(folderId, userId)
+                .flatMap { folder ->
+                    deleteFolderContents(userId, folder.id!!, deletedFileCount, deletedFolderCount)
+                        .then(folderRepository.deleteById(folder.id!!))
+                        .doOnSuccess { deletedFolderCount.incrementAndGet() }
+                }
+            }
+            .onErrorResume { error ->
+                println("Error deleting folder: ${error.message}")
+                Mono.empty()
             }
             .then()
     }
@@ -141,7 +149,7 @@ class FolderService(
             .flatMap { folder ->
                 // 递归调用
                 deleteFolderContents(userId, folder.id!!, deletedFileCount, deletedFolderCount)
-                    .then(this.deleteFolderById(userId, folder.id!!))
+                    .then(folderRepository.deleteByIdAndUserId(folderId,userId))
                     .doOnSuccess { deletedFolderCount.incrementAndGet() }
             }
 
@@ -160,15 +168,4 @@ class FolderService(
         }
     }
 
-    fun deleteFolderById(userId: Int, folderId: Long): Mono<Void> {
-        return folderRepository.deleteByIdAndUserId(folderId,userId)
-            // 如果没有找到文件夹，返回抛出文件夹不存在异常
-            .flatMap { deletedFolder ->
-                if (deletedFolder) {
-                    Mono.error(Exception("Folder not found"))
-                } else {
-                    Mono.empty()
-                }
-            }
-    }
 }

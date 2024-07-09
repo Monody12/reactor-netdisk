@@ -1,6 +1,7 @@
 package com.example.reactornetdisk
 
 import com.example.reactornetdisk.repository.FileRepository
+import com.example.reactornetdisk.service.FolderService
 import com.example.reactornetdisk.service.UserService
 import com.example.reactornetdisk.util.UploadUtil
 import org.apache.tika.Tika
@@ -19,6 +20,9 @@ class ReactorNetdiskApplicationTests {
     @Test
     fun contextLoads() {
     }
+
+    @Autowired
+    private lateinit var folderService: FolderService
 
     @Autowired
     lateinit var userService: UserService
@@ -75,6 +79,7 @@ class ReactorNetdiskApplicationTests {
 
     @Test
     fun deleteFolderTest() {
-
+        val block = folderService.deleteFolderById(1, 9).block()
+        println(block)
     }
 }
