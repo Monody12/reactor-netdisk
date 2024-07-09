@@ -77,9 +77,4 @@ class ReactorNetdiskApplicationTests {
         }
     }
 
-    @Test
-    fun deleteFolderTest() {
-        val block = folderService.deleteFolderById(1, 9).block()
-        println(block)
-    }
 }
