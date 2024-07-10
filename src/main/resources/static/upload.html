@@ -1,114 +1,107 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--禁用缓存-->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
     <title>文件上传</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        .upload-container {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        h1 {
-            margin-top: 0;
-        }
-        #file-input {
-            display: none;
-        }
-        #file-label {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        #file-label:hover {
-            background-color: #45a049;
-        }
-        #upload-button {
-            margin-top: 1rem;
-            padding: 10px 20px;
-            background-color: #008CBA;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        #upload-button:hover {
-            background-color: #007B9A;
-        }
-        #file-list {
-            margin-top: 1rem;
-        }
-        #result {
-            margin-top: 1rem;
-            font-weight: bold;
-        }
-    </style>
+    <link rel="stylesheet" type="text/css" href="css/elementUI.css"/>
+    <script src="js/vue.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/axios.min.js" type="text/javascript"></script>
+    <script src="js/elementUI.js" type="text/javascript"></script>
 </head>
 <body>
-<div class="upload-container">
-    <h1>文件上传</h1>
-    <input type="file" id="file-input" multiple>
-    <label for="file-input" id="file-label">选择文件</label>
-    <button id="upload-button">上传文件</button>
-    <div id="file-list"></div>
-    <div id="result"></div>
+<div id="app">
+    <el-upload
+            class="upload-demo"
+            drag
+            action="./file/upload"
+            :data="page_path"
+            :on-preview="handlePreview"
+            :on-remove="handleRemove"
+            :file-list="fileList"
+            list-type="picture"
+            multiple>
+        <i class="el-icon-upload"></i>
+        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+        <div class="el-upload__tip" slot="tip">当前登录用户：{{page_path.username}}</div>
+        <div class="el-upload__tip" slot="tip">上传至文件夹：{{page_path.path}}</div>
+    </el-upload>
 </div>
-
-<script>
-    const fileInput = document.getElementById('file-input');
-    const fileList = document.getElementById('file-list');
-    const uploadButton = document.getElementById('upload-button');
-    const resultDiv = document.getElementById('result');
-
-    fileInput.addEventListener('change', updateFileList);
-    uploadButton.addEventListener('click', uploadFiles);
-
-    function updateFileList() {
-        fileList.innerHTML = '';
-        for (const file of fileInput.files) {
-            fileList.innerHTML += `<p>${file.name}</p>`;
-        }
-    }
-
-    function uploadFiles() {
-        const formData = new FormData();
-        for (const file of fileInput.files) {
-            formData.append('files', file);
-        }
-
-        fetch('/api/upload', {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.code === 200) {
-                    resultDiv.textContent = data.data;
-                    resultDiv.style.color = 'green';
-                } else {
-                    resultDiv.textContent = '上传失败：' + data.message;
-                    resultDiv.style.color = 'red';
-                }
-            })
-            .catch(error => {
-                resultDiv.textContent = '上传出错：' + error.message;
-                resultDiv.style.color = 'red';
-            });
-    }
-</script>
 </body>
+<script>
+    new Vue({
+        //作用域
+        el: '#app',
+        //初始化数据
+        data: {
+            title: 'HelloWorld',
+            radio: '1',
+            input: undefined,
+            fileList: undefined,
+            page_path: {
+                username: 'test',
+                path: '/'
+            }
+        },
+        // 初始化用户信息
+        created: function () {
+            this.page_path.username = localStorage.getItem("username")
+            this.page_path.path = localStorage.getItem("folderPath")
+
+        },
+        //函数写在这里
+        methods: {
+            f1() {
+                var params = new URLSearchParams()
+                params.append("username", "test")
+                params.append("password", "test")
+                axios.post('http://localhost:10010/userservice/login', params).then(res => {
+                    var info = res.data
+                    console.log(info)
+                })
+            },
+            handlePreview(file) {
+                console.log(file)
+                window.open(file.url, '_blank')
+            },
+            handleRemove(file, fileList) {
+                console.log(file, fileList)
+                console.log("选中文件的id为：", file.response.msg)
+                this.$confirm('是否同时删除文件？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    var params = new URLSearchParams()
+                    params.append("username", this.page_path.username)
+                    params.append("fileId", file.response.msg)
+                    axios.post('/netdisk/file/delete', params).then(res => {
+                        var info = res.data.code
+                        if (info === 200) {
+                            this.$message({
+                                type: 'success',
+                                message: '删除成功!'
+                            });
+                        } else {
+                            this.$message({
+                                type: 'error',
+                                message: res.data.msg
+                            });
+                        }
+                    })
+
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '仅从列表中移除'
+                    });
+                });
+            }
+
+        }
+    })
+</script>
 </html>

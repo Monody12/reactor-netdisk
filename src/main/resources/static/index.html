@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html xmlns:v-clipboard="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8">
+    <!--禁用缓存-->
+    <!--    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>-->
+    <!--    <meta http-equiv="Pragma" content="no-cache"/>-->
+    <!--    <meta http-equiv="Expires" content="0"/>-->
+    <!--    <meta http-equiv="Expires" content="0">-->
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="Cache" content="no-cache">
+
+    <title>我的个人网盘</title>
+    <link rel="icon" href="img/favicon.ico">
+    <script src="js/axios.min.js" type="text/javascript"></script>
+    <link rel="stylesheet" type="text/css" href="css/index.css"/>
+    <script src="js/vue.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/index.js" type="text/javascript"></script>
+    <!--	<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>-->
+    <!--	<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">-->
+    <!--	<script src="https://unpkg.com/element-ui/lib/index.js"></script>-->
+    <style lang="scss" scoped>
+      * {
+        font-family: "微软雅黑", serif;
+      }
+
+      .table-wrapper {
+        height: calc(100% - 60px);
+      }
+
+      /*
+          用于鼠标点击文件名进行预览
+       */
+      .fileClick {
+        cursor: pointer;
+      }
+
+      .fileClick:hover {
+        color: #1890ff;
+      }
+
+      .fileLinkButton {
+        font-size: 32px;
+      }
+    </style>
+</head>
+<body>
+<div id="app">
+    <hgroup>
+        <h2 style="display: inline-block">用户名：{{ username }} 昵称：{{ userinfo.nickname }} 的个人网盘</h2>
+
+        <div style="float: right">
+
+            <el-dropdown @command="handleCommand">
+                <el-avatar :size="45" :src="image" @error="errorHandler">
+                    <img src="https://s2.loli.net/2022/04/23/5VzqlWpkevLfdiQ.png"/>
+
+                </el-avatar>
+                <el-dropdown-menu slot="dropdown">
+                    <el-dropdown-item command="a">{{ menu_visible.personalize ? '隐藏个性化设置' : '显示个性化设置' }}
+                    </el-dropdown-item>
+                    <el-dropdown-item command="b">
+                        {{ menu_visible.file_menu ? '简略显示文件菜单功能' : '详细显示文件菜单功能' }}
+                    </el-dropdown-item>
+                    <el-dropdown-item>螺蛳粉</el-dropdown-item>
+                    <el-dropdown-item>双皮奶</el-dropdown-item>
+                    <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+                </el-dropdown-menu>
+            </el-dropdown>
+        </div>
+    </hgroup>
+
+    <el-descriptions title="" :column="2" border>
+        <el-descriptions-item v-if="menu_visible.personalize" label="个性化工具">
+            <el-button @click="editPersonalize()">个性化设置</el-button>
+            <el-button @click="editUserInfo()">编辑个人信息</el-button>
+        </el-descriptions-item>
+        <el-descriptions-item v-if="menu_visible.document_tools" label="实用工具">
+            <el-button @click="online_doc()">在线文档</el-button>
+        </el-descriptions-item>
+        <el-descriptions-item v-if="mode=='share'" label="分享模式工具">
+            <el-button-group>
+                <el-button type="primary" plain @click="$message.warning('功能暂未开放')" icon="el-icon-document-copy">
+                    拷贝
+                </el-button>
+                <el-button type="primary" plain @click="returnIndex" icon="el-icon-s-home">返回</el-button>
+            </el-button-group>
+        </el-descriptions-item>
+
+    </el-descriptions>
+
+
+    <el-input placeholder="请输入内容" v-model="path">
+        <template slot="prepend">当前文件目录</template>
+        <el-button v-if="mode == 'owner'" @click="uploadFile" slot="append" icon="el-icon-upload2">
+            {{ menu_visible.file_menu_word[menu_visible.file_menu].upload }}
+        </el-button>
+        <el-button @click="batchDownload" slot="append" icon="el-icon-download">
+            {{ menu_visible.file_menu_word[menu_visible.file_menu].download }}
+        </el-button>
+        <el-button @click="fileLink" slot="append" icon="el-icon-link">
+            {{ menu_visible.file_menu_word[menu_visible.file_menu].fileLink }}
+        </el-button>
+        <el-button v-if="mode == 'owner'" @click="dialogFormVisible4 = true" slot="append" icon="el-icon-s-promotion">
+            {{ menu_visible.file_menu_word[menu_visible.file_menu].share }}
+        </el-button>
+        <el-button v-if="mode == 'owner'" @click="newFolder" slot="append" icon="el-icon-folder-add">
+            {{ menu_visible.file_menu_word[menu_visible.file_menu].new }}
+        </el-button>
+        <!--        <el-button v-if="mode == 'owner'" @click="openFolderViewer('copy')" slot="append" icon="el-icon-document-copy">-->
+        <!--            {{menu_visible.file_menu_word[menu_visible.file_menu].copy}}-->
+        <!--        </el-button>-->
+        <el-button v-if="mode == 'owner'" @click="openFolderViewer('move')" slot="append" icon="el-icon-paperclip">
+            {{ menu_visible.file_menu_word[menu_visible.file_menu].move }}
+        </el-button>
+        <el-button v-if="mode == 'owner'" @click="deleteFilesConfirm" slot="append" icon="el-icon-delete">
+            {{ menu_visible.file_menu_word[menu_visible.file_menu].delete }}
+        </el-button>
+        <el-button @click="refresh" slot="append" icon="el-icon-refresh-right">
+            {{ menu_visible.file_menu_word[menu_visible.file_menu].refresh }}
+        </el-button>
+        <el-button v-if="mode == 'owner'" @click="homePath" slot="append" icon="el-icon-s-home">
+            {{ menu_visible.file_menu_word[menu_visible.file_menu].home }}
+        </el-button>
+        <el-button @click="backPath" slot="append" icon="el-icon-back">
+            {{ menu_visible.file_menu_word[menu_visible.file_menu].back }}
+        </el-button>
+        <el-button @click="upPath" slot="append" icon="el-icon-top">
+            {{ menu_visible.file_menu_word[menu_visible.file_menu].up }}
+        </el-button>
+        <el-button v-if="mode == 'owner'" @click="enterPath" slot="append" icon="el-icon-right">
+            {{ menu_visible.file_menu_word[menu_visible.file_menu].enter }}
+        </el-button>
+    </el-input>
+    <div class="table-wrapper" ref="tableWrapper">
+        <el-table
+                :data="tableData.filter(data => {
+    const searchLower = search ? search.toLowerCase() : '';
+    return !search ||
+           (data.name && data.name.toLowerCase().includes(searchLower)) ||
+           (data.username && data.username.toLowerCase().includes(searchLower)) ||
+           (data.detail && data.detail.toLowerCase().includes(searchLower)) ||
+           (data.type && data.type.toLowerCase().includes(searchLower));
+                })"
+                ref="multipleTable"
+                tooltip-effect="dark"
+                style="width: 100%"
+                @selection-change="handleSelectionChange"
+                :row-key="row => { return row.id }"
+                :height=tableH
+        >
+            <el-table-column
+                    :reserve-selection="true"
+                    type="selection"
+                    width="55">
+            </el-table-column>
+
+            <el-table-column
+                    prop="username"
+                    label="所有者"
+                    width="100">
+            </el-table-column>
+            <el-table-column
+                    prop="name"
+                    label="文件名"
+                    sortable
+                    width="350">
+                <template slot-scope="scope">
+                    <div class="fileClick" @click="openFile(scope.row)">
+                        {{ scope.row.name }}
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column
+                    prop="type"
+                    label="文件类型"
+                    sortable
+                    width="120">
+            </el-table-column>
+            <el-table-column
+                    prop="detail"
+                    label="文件描述"
+                    sortable
+                    width="150">
+            </el-table-column>
+            <el-table-column
+                    prop="size"
+                    label="文件大小"
+                    sortable
+                    width="120">
+                <template slot-scope="scope">{{ scope.row.size }}</template>
+            </el-table-column>
+
+            <el-table-column
+                    prop="updateTime"
+                    label="修改日期"
+                    sortable
+                    width="180">
+
+                <template slot-scope="scope">{{ scope.row.updateTime }}</template>
+            </el-table-column>
+
+            <el-table-column
+                    align="right">
+                <template slot="header" slot-scope="scope">
+                    <el-input
+                            v-model="search"
+                            size="mini"
+                            placeholder="输入关键字搜索"/>
+                </template>
+            </el-table-column>
+
+            <el-table-column
+
+                    prop="isFolder"
+                    label="操作"
+                    width="150">
+                <template slot-scope="scope">
+                    <el-button type="text" @click="editFileInfo(scope.$index, scope.row)" icon="el-icon-edit">
+                        {{ menu_visible.file_menu_word[menu_visible.file_menu].edit }}
+                    </el-button>
+                </template>
+            </el-table-column>
+
+
+        </el-table>
+    </div>
+
+
+    <el-dialog title="编辑文件信息" :visible.sync="dialogFormVisible">
+        <el-form :model="form2">
+            <el-form-item label="文件名" :label-width="formLabelWidth">
+                <el-input v-model="form2.name" autocomplete="off"></el-input>
+            </el-form-item>
+            <el-form-item label="文件描述" :label-width="formLabelWidth">
+                <el-input v-model="form2.detail" autocomplete="off"></el-input>
+            </el-form-item>
+            <el-form-item v-if="form2.small" label="在线编辑" :label-width="formLabelWidth">
+                <el-button type="primary" @click="openOnlineEditor(form2.id)"
+                           plain>打开在线文件编辑器
+                </el-button>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button @click="dialogFormVisible = false">取 消</el-button>
+            <el-button type="primary" @click="updateFileInfo()">确 定</el-button>
+        </div>
+    </el-dialog>
+
+    <!-- 用户信息修改弹窗-->
+    <el-dialog title="编辑用户信息" :visible.sync="dialogFormVisible2">
+        <el-form :model="form3" autocomplete="off">
+            <el-form-item label="用户名" :label-width="formLabelWidth2">
+                <el-input v-model="username" autocomplete="off" :disabled="true"></el-input>
+            </el-form-item>
+            <el-form-item label="昵称" :label-width="formLabelWidth2">
+                <el-input v-model="form3.nickname" autocomplete="off"></el-input>
+            </el-form-item>
+            <el-form-item label="原密码" :label-width="formLabelWidth2">
+                <el-input placeholder="如需更改密码，请在此输入原密码" v-model="form3.old_password" show-password
+                          autocomplete="new-password"></el-input>
+            </el-form-item>
+            <el-form-item label="密码" :label-width="formLabelWidth2">
+                <el-input placeholder="如需更改密码，请在此输入新密码" v-model="form3.password" show-password
+                          autocomplete="new-password"></el-input>
+            </el-form-item>
+            <el-form-item label="确认密码" :label-width="formLabelWidth2">
+                <el-input placeholder="再输入一次新密码以确认更改" v-model="form3.confirm_password" show-password
+                          autocomplete="new-password"></el-input>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button @click="dialogFormVisible2 = false">取 消</el-button>
+            <el-button type="primary" @click="updateUserInfo()">确 定</el-button>
+        </div>
+    </el-dialog>
+
+    <!-- 个性化设置修改弹窗-->
+    <el-dialog title="个性化设置（仅本地生效）" :visible.sync="dialogFormVisible3">
+        <el-form :model="Personalize" autocomplete="off">
+
+            <el-form-item label="文件信息显示" :label-width="formLabelWidth3">
+                <el-select v-model="Personalize.descending" placeholder="请选择">
+                    <el-option
+                            v-for="item in fileOrderOptions"
+                            :key="item.value"
+                            :label="item.label"
+                            :value="item.value"
+                    >
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="上传文件默认公开" :label-width="formLabelWidth3">
+                <el-select v-model="Personalize.onPublic" placeholder="请选择">
+                    <el-option
+                            v-for="item in defaultOptions"
+                            :key="item.value"
+                            :label="item.label"
+                            :value="item.value"
+                    >
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="上传时默认覆盖文件" :label-width="formLabelWidth3">
+                <el-select v-model="Personalize.onOverwrite" placeholder="请选择">
+                    <el-option
+                            v-for="item in defaultOptions"
+                            :key="item.value"
+                            :label="item.label"
+                            :value="item.value"
+                    >
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
+
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button @click="dialogFormVisible3 = false">取 消</el-button>
+            <el-button type="primary" @click="editPersonalize(true)">确 定</el-button>
+        </div>
+    </el-dialog>
+
+    <el-dialog title="文件分享" :visible.sync="dialogFormVisible4">
+        <el-form :model="form4">
+            <el-form-item label="提取码" :label-width="formLabelWidth">
+                <el-input v-model="form4.code" autocomplete="off"></el-input>
+            </el-form-item>
+            <el-form-item label="有效时间" :label-width="formLabelWidth">
+                <el-select v-model="form4.day" placeholder="请选择分享持续天数">
+                    <el-option label="1 天" value="1"></el-option>
+                    <el-option label="3 天" value="3"></el-option>
+                    <el-option label="7 天" value="7"></el-option>
+                    <el-option label="30 天" value="30"></el-option>
+                </el-select>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button @click="dialogFormVisible4 = false">取 消</el-button>
+            <el-button type="primary" @click="shareFiles()">确 定</el-button>
+        </div>
+    </el-dialog>
+
+    <!-- 文件夹预览 （复制或者移动文件时使用） -->
+    <el-dialog title="路径选择" :visible.sync="dialogTableVisible5">
+        <el-input placeholder="请输入内容" v-model="folderView.path">
+            <template slot="prepend">目标文件夹位置</template>
+            <el-button v-if="mode == 'owner'" @click="newFolder(true)" slot="append" icon="el-icon-folder-add">
+                {{ menu_visible.file_menu_word[menu_visible.file_menu].new }}
+            </el-button>
+            <el-button @click="upPathView" slot="append" icon="el-icon-top">
+                {{ menu_visible.file_menu_word[menu_visible.file_menu].up }}
+            </el-button>
+
+        </el-input>
+        <el-table :data="folderView.data" :row-key="row => { return row.id }">
+            <el-table-column property="name" label="文件夹名称">
+                <template slot-scope="scope">
+                    <!-- 鼠标点击名称进入该文件夹 -->
+                    <div class="fileClick" @click="openFolder(scope.row.path+ scope.row.name + '/') ">
+                        {{ scope.row.name }}
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column property="updateTime" label="修改日期"></el-table-column>
+        </el-table>
+        <div slot="footer" class="dialog-footer">
+            <el-button @click="dialogTableVisible5 = false">取 消</el-button>
+            <el-button type="primary" @click="move_copy">确 定</el-button>
+        </div>
+    </el-dialog>
+
+    <!-- 获取外链 -->
+    <el-dialog title="获取外链" :visible.sync="dialogTableVisible6">
+        <div style="display: flex;justify-content: space-around">
+            <button class="fileLinkButton" @click="fileLinkConfirm(false)">预览</button>
+            <button class="fileLinkButton" @click="fileLinkConfirm(true)">下载</button>
+        </div>
+    </el-dialog>
+
+</div>
+</body>
+<script>
+
+    new Vue({
+        //作用域
+        el: '#app',
+        components: {},
+        //初始化数据
+        data: {
+            tableH: 0, //文件表单高度
+            mode: 'owner', // 当前模式，owner 为拥有者模式，share 为分享模式
+            code: null, // 进入分享模式的提取码
+            token: "", // 分享模式提取码
+            username: undefined,
+            userinfo: {
+                'nickname': undefined
+            },
+            password: "",
+            image: "http://182.92.224.215:8082/netdisk/upload/guest/%E6%9C%AA%E5%91%BD%E5%90%8D.jpg",
+            level: "",
+            path: "/",
+            //文件信息列表
+            tableData: [{
+                id: '文件标识',
+                username: '所有者',
+                name: '文件名',
+                detail: '文件描述',
+                size: '文件大小',
+                type: '文件类型',
+                path: '下载链接',
+                expireTime: '修改日期',
+                time: '上传时间'
+                // public: '是否公开'
+            }],
+            multipleSelection: [],
+            //编辑文件信息 内容栏
+            form2: {
+                refObject: undefined, // 行引用对象
+                name: '',
+                index: 0,
+                id: "",
+                data: [],
+                detail: '文件描述',
+                isfolder: false,
+                small: false, // 是否为小文件可以编辑
+            },
+            //文件信息编辑窗口
+            dialogTableVisible: false,
+            dialogFormVisible: false,
+            formLabelWidth: '120px',
+            //用户信息编辑窗口
+            dialogTableVisible2: false,
+            dialogFormVisible2: false,
+            formLabelWidth2: '120px',
+            form3: {
+                nickname: "",
+                password: "",
+                confirm_password: "",
+                old_password: ""
+            },
+            //个性化设置编辑窗口
+            dialogTableVisible3: false,
+            dialogFormVisible3: false,
+            formLabelWidth3: '180px',
+            Personalize: {
+                descending: false,
+                onOverwrite: false,
+                onPublic: false
+            },
+            fileOrderOptions: [{
+                value: false,
+                label: '时间升序'
+            }, {
+                value: true,
+                label: '时间降序'
+            }],
+            defaultOptions: [{
+                value: false,
+                label: '禁用'
+            }, {
+                value: true,
+                label: '开启'
+            }],
+            //搜索内容
+            search: "",
+            // 文件分享弹窗
+            dialogFormVisible4: false,
+            formLabelWidth4: '120px',
+            form4: {
+                code: '',
+                day: null
+            },
+            path_stack: [],
+            folderId_stack: [],
+            copyValue: undefined, // 复制到剪切板用的变量
+            // 可直接预览的文件类型
+            previewable: [
+                // 图片
+                'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'ico',
+                // 音乐
+                'mp3', 'wav', 'ogg',
+                // 视频
+                'mp4',
+                // 文档
+                'pdf', 'md', 'txt',
+                // 代码文件
+                'c', 'cpp', 'java', 'py', 'js', 'html', 'css', 'php', 'go', 'sh', 'bat', 'sql', 'xml', 'json', 'yml', 'yaml', 'ini',
+                'conf', 'log', 'properties', 'gitignore',
+            ],
+            // 需要调用Google文档打开的Office文件类型
+            previewable_office: [
+                'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'
+            ],
+            // 菜单显示状态
+            menu_visible: {
+                // 个性化设置
+                personalize: true,
+                // 文档实用工具
+                document_tools: true,
+                file_menu: 1,
+                file_menu_word: [{
+                    'upload': '',
+                    'download': '',
+                    'fileLink': '',
+                    'share': '',
+                    'new': '',
+                    'delete': '',
+                    'refresh': '',
+                    'home': '',
+                    'back': '',
+                    'up': '',
+                    'enter': '',
+                    'edit': ''
+                }, {
+                    'upload': '上传',
+                    'download': '下载',
+                    'fileLink': '外链',
+                    'share': '分享',
+                    'new': '新建',
+                    "copy": "复制",
+                    "move": "移动",
+                    'delete': '删除',
+                    'refresh': '刷新',
+                    'home': '主页',
+                    'back': '后退',
+                    'up': '上层',
+                    'enter': '进入',
+                    'edit': '编辑'
+                }]
+            },
+            // 文件夹预览
+            dialogTableVisible5: false,
+            folderView: {
+                mode: '', // copy or move
+                data: [],
+                folderList: [],  // 用户选中的文件夹id
+                fileList: [], // 用户选中的文件id
+                path: '',
+                loading: false
+            },
+            // 获取外链
+            dialogTableVisible6: false,
+            // 外链下载模式 false 为预览模式，true为下载模式
+            fileLinkDownload: false
+        },
+        created: function () {
+            this.tableData = new Array()
+            // 检测是否有cookie，并校验cookie是否有效
+            var cookie = document.cookie
+
+            // 寻找到cookie
+            if (cookie.length > 0) {
+                // 是否找到check字段的cookie
+                var find = false
+                var cookie_arr = cookie.split(";")
+                console.log('用户cookie: ', cookie_arr)
+                for (var i = 0; i < cookie_arr.length; i++) {
+                    var cookie_item = cookie_arr[i].split("=")
+                    // 当存在多个cookie时，切片会导致 'check' 变成' check'
+                    if (cookie_item[0] == "check" || cookie_item[0] == " check") {
+                        find = true
+                        this.token = cookie_item[1]
+                        // 获取到base64加密的校验码，进行解密并向服务器发送验证
+                        var check = window.atob(this.token)
+                        var obj = JSON.parse(check)
+
+                        var params = new URLSearchParams()
+                        params.append('username', obj.username)
+                        params.append('token', obj.uuid)
+                        axios.post('../userservice/login/verify', params).then(res => {
+                            var info = res.data
+                            if (info.code == 200) {
+                                this.username = obj.username
+                                this.token = obj.uuid
+                                console.log('created: function: this.username', this.username)
+                                setTimeout(() => {
+                                    this.getUserInfo()
+                                    this.getInfo()
+                                }, 100)
+                            }
+                            // 验证失败
+                            else {
+                                alert(info.msg)
+                                window.location.href = "./login.html"
+                            }
+                        })
+                        break
+                    }
+                }
+                if (!find) {
+                    // 在多个cookie中找不到check字段的cookie
+                    window.location.href = "./login.html"
+                }
+            } else {
+                // 没有cookie，跳转到登录页面
+                window.location.href = "./login.html"
+            }
+
+
+            // var Personalize = this.getStorage("Personalize")  //加载用户个性化设置
+            // if (Personalize != null)
+            // 	this.Personalize = Personalize
+        },
+        mounted: function () {  //vue中的一个钩子函数，一般在初始化页面完成后，再对dom节点进行相关操作。
+            // 调整页面高度
+            this.fetTableHeight()
+            var share_id = this.getQueryString('share_id')
+            this.url = share_id
+            var code = this.getQueryString('code')
+            this.code = code
+            if (share_id != null) {
+                console.log('share_id', share_id)
+                this.axiosGetShare(share_id, code).then(res => {
+                    console.log(res.data)
+                    var info = res.data
+                    if (info.code != 200) {
+                        this.$prompt(info.msg, '加密的文件分享', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消'
+                        }).then(({value}) => {
+                            if (value == null)
+                                value = ''
+                            window.location.assign('index.html?share_id=' + share_id + '&code=' + value)
+                        }).catch(() => {
+                            this.$message({
+                                type: 'info',
+                                message: '取消输入，正在返回主页'
+                            });
+                            setTimeout(() => {
+                                window.location.assign("index.html")
+                            }, 2000)
+                        });
+                    }
+                    // 初始化分享文件列表
+                    else {
+                        this.mode = 'share'
+                        var list = new Array()
+                        for (let item of info.resData.folder) {
+                            list.push(item)
+                        }
+                        for (let item of info.resData.file) {
+                            list.push(item)
+                        }
+                        this.tableData = list
+                        // 初始化
+                        this.initTable()
+                        // 将本次分享的token存下来
+                        this.token = info.resData.token
+                    }
+
+                })
+            } else {
+            }
+        },
+
+        //函数写在这里
+        methods: {
+            setStorage(key, value) {
+                localStorage.setItem(key, JSON.stringify(value))
+            },
+            getStorage(key) {
+                return JSON.parse(localStorage.getItem(key))
+            },
+            axiosGetFolders(params) {
+                return axios.get("./folder/queryByPath", params)
+            },
+            axiosGetFiles(params) {
+                return axios.get("./file/findByPath", params)
+            },
+            axiosMoveFolder() {
+                var params = new URLSearchParams()
+                params.append('username', this.username)
+                params.append('path', this.folderView.path)
+                var list = this.folderView.folderList
+                for (let item of list) {
+                    params.append('folderId', item.id)
+                }
+                return axios.post("./folder/move", params)
+            },
+            axiosMoveFile() {
+                var params = new URLSearchParams()
+                params.append('username', this.username)
+                params.append('path', this.folderView.path)
+                var list = this.folderView.fileList
+                for (let item of list) {
+                    params.append('fileId', item.id)
+                }
+                return axios.post("./file/move", params)
+            },
+            axiosDeleteFolder(folder_params) {
+                if (folder_params.get('folderId') == null) {
+                    return null
+                }
+                return axios.post("./folder/delete", folder_params)
+            },
+            axiosDeleteFile(file_params) {
+                if (file_params.get('fileId') == null) {
+                    console.log(file_params.toString())
+                    return null
+                }
+                return axios.post("./file/delete", file_params)
+            },
+            // 监听头像框下拉菜单事件
+            handleCommand(command) {
+                this.$message('click on item ' + command);
+                if (command == 'a') {
+                    this.menu_visible.personalize = !this.menu_visible.personalize
+                } else if (command == 'b') {
+                    var flag = this.menu_visible.file_menu
+                    this.menu_visible.file_menu = flag == 1 ? 0 : 1
+                } else if (command == "logout") {
+                    this.logoutConfirm()
+                }
+            },
+            // 获取分享文件信息
+            axiosGetShare(url, code, newToken) {
+                var post_url = './share/get/' + url
+                var params = new URLSearchParams()
+                if (code != null)
+                    params.append('code', code)
+                if (newToken != null)
+                    params.append('newToken', newToken)
+                return axios.post(post_url, params)
+            },
+            getUserInfo() {
+                var username = this.username
+                if (username == undefined) {
+                    alert('请先登录')
+                    return
+                }
+                axios.get('./userinfo/get/full?username=' + username).then(res => {
+                    var info = res.data
+                    console.log('getUserInfo:', info)
+                    if (info.code == 200) {
+                        this.userinfo = JSON.parse(info.msg)
+                    } else {
+                        alert(info.msg)
+                    }
+                })
+            },
+            getInfo() {
+
+                // 处于分享模式下，获取分享文件信息功能失效
+                if (this.mode == 'share') {
+                    return
+                }
+                var stack = this.path_stack
+                // 如果栈为空，或者入栈地址与当前地址不相同 则将该地址放入栈中
+                if (stack.length == 0 || stack[stack.length - 1] != this.path)
+                    stack.push(this.path)
+                var params = {
+                    params: { //请求参数
+                        'username': this.username,
+                        'page': 0,
+                        'size': 99,
+                        'path': this.path
+                    }
+                }
+                var that = this
+                axios.all([that.axiosGetFolders(params), that.axiosGetFiles(params)])
+                    .then(axios.spread(function (folders, files) {
+                        that.tableData = new Array()
+                        var tmp = folders.data
+                        if (tmp.code == 200) {
+                            const list = tmp.resData.fileInfo.list
+                            // console.log('tmp.resData.fileInfo.list', list)
+                            for (var index in list) {
+                                list[index]['isfolder'] = true
+                                that.tableData.push(list[index])
+                            }
+                        } else {
+                            console.error(tmp)
+                            that.$message.error('文件夹信息获取失败')
+                        }
+                        tmp = files.data
+                        if (tmp.code == 200) {
+                            const list = tmp.resData.fileInfo.list
+                            // console.log("tmp.resData.fileInfo.list", list)
+                            for (var index in list) {
+                                list[index]['isfolder'] = false
+                                that.tableData.push(list[index])
+                            }
+                        } else {
+                            console.error(tmp)
+                            that.$message.error('文件信息获取失败')
+                        }
+
+                        console.log('文件信息', that.tableData)
+                        // 显示查询到的文件夹数量
+                        that.$message({
+                            message: '查询到' + that.tableData.length + '条文件信息',
+                            type: 'success'
+                        })
+
+                        that.initTable()
+
+                    }))
+                // 清空列表选中
+                this.$refs.multipleTable.clearSelection()
+            },
+            guestGetRoot(url, code) {
+                this.axiosGetShare(url, code, false).then(res => {
+                    var info = res.data
+                    if (info.code != 200) {
+                        console.error('guestGetRoot', info)
+                        this.$message.error('guestGetRoot', info.msg)
+                    } else {
+                        info = info.resData
+                        console.log('guestGetRoot', info)
+                        this.putFileOnTableData(true, info.folder, info.file)
+                    }
+                })
+            },
+            // 访客模式获取文件夹下的详细信息
+            guestGetFolder(folderId, parentFolderId) {
+                var params = {
+                    params: { //请求参数
+                        'folderId': folderId,
+                        'parentFolderId': parentFolderId,
+                        'token': this.token
+                    }
+                }
+                if (folderId !== null) {
+                    axios.get('./share/get/folder', params).then(res => {
+                        var info = res.data
+
+                        // 输出报错信息
+                        if (info.code != 200) {
+                            console.error(info)
+                            this.$message.error(info.msg)
+                        } else {
+                            info = info.resData
+                            console.log(info)
+                            this.putFileOnTableData(true, info.folder.list, info.file.list)
+                        }
+                    })
+                }
+                // 获取分享根目录下的信息
+                else {
+                    // post getUrl 接口
+                    this.axiosGetShare(this.url, this.code, false).then(res => {
+
+                    })
+
+                }
+            },
+            // 预览文件或进入文件夹
+            openFile(row) {
+                console.log(row)
+                if (row.isfolder) {
+                    this.enterFolder(null, row)
+                } else {
+                    this.previewFile(null, row)
+                }
+            },
+            getQueryString(name) {
+                let reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i")
+                let r = window.location.search.substr(1).match(reg)
+                if (r != null) {
+                    return decodeURIComponent(r[2])
+                }
+                return null
+            },
+            handleSelectionChange(val) {
+                this.multipleSelection = val;
+            },
+            batchDownload() {
+                // 获取复选框内容，如果选中的是文件则打开下载
+                var list = this.multipleSelection
+                if (list.length == 0) {
+                    this.$message.error('请选择文件')
+                    return
+                }
+                for (let file of list) {
+                    if (!file.isfolder) {
+                        window.open('download/' + file.id + '?isDownload=true', '_blank')
+                    } else {
+                        setTimeout(() => {
+                            this.$message({
+                                message: file.name + '不是一个文件，暂不支持文件夹下载',
+                                type: 'warning'
+                            })
+                        }, 100)
+                    }
+                }
+            },
+            /**
+             * 将文件夹列表、文件列表置入表格中
+             * @param isNew 是否新建一个数组来存放
+             * @param folderList
+             * @param fileList
+             */
+            putFileOnTableData(isNew, folderList, fileList) {
+                // 新建一个数组，用于存放文件夹和文件
+                if (isNew)
+                    this.tableData = new Array()
+                for (let folder of folderList) {
+                    this.tableData.push(folder)
+                }
+                for (let file of fileList) {
+                    this.tableData.push(file)
+                }
+                // 格式化表格
+                this.initTable()
+            },
+            // 加载头像失败时，显示默认头像
+            errorHandler() {
+                return true
+            },
+            onCopySuccess() {
+                this.$message.success('复制成功')
+            },
+            onCopyError() {
+                this.$message.error('复制失败')
+            },
+            updateFileInfo() {
+                this.dialogFormVisible = false
+                if (this.form2.id !== "") {
+                    //发送axios的post请求
+                    var params = new URLSearchParams();
+                    params.append('id', this.form2.id)
+                    params.append('username', this.username)
+                    params.append('name', this.form2.name)
+                    params.append('detail', this.form2.detail)
+                    var post_url = this.form2.isfolder ? './folder/update' : './file/update'
+                    axios.post(post_url, params).then(res => {
+                        var info = res.data
+                        if (info.code != 200) {
+                            console.error(info)
+                            this.$message.error(info.msg)
+                        } else {
+
+                            info = info.resData
+                            console.log(info)
+                            // 在本地修改文件夹信息
+                            if (this.form2.isfolder) {
+                                this.form2.refObject.detail = this.form2.detail
+                                this.form2.refObject.name = this.form2.name
+                            }
+                            // 在本地修改文件信息
+                            else {
+                                this.form2.refObject.detail = this.form2.detail
+                                this.form2.refObject.name = this.form2.name
+                                this.form2.refObject.type = info.file.type
+                            }
+                            this.$message.success('修改成功')
+                            this.dialogFormVisible = false
+                            // this.getFolder(this.currentFolderId)
+                        }
+
+                    })
+                }
+            },
+            editFileInfo(index, row) {
+                this.dialogFormVisible = true
+                // console.log(row)
+                this.form2.index = index
+                this.form2.id = row.id
+                this.form2.detail = row.detail
+                this.form2.name = row.name
+                this.form2.isfolder = row.isfolder
+                this.form2.refObject = row
+                this.form2.small = row.small
+            },
+            // 预览文件
+            previewFile(index, row) {
+                var type = row.type
+                var name = row.name
+                // 获取文件扩展名
+                var ext = name.substr(name.lastIndexOf('.') + 1).toLowerCase()
+                console.log('文件类型：', type, "文件扩展名：", ext)
+                if (this.previewable_office.includes(ext)) {
+                    // 弹窗询问用户是否使用Google文档打开
+                    this.$confirm('该文档需使用Google文档进行在线预览，需要外网环境', '提示', {
+                        confirmButtonText: '预览',
+                        cancelButtonText: '下载',
+                        type: 'warning'
+                    }).then(() => {
+                        window.open('https://docs.google.com/viewer?url=' + window.origin + "/netdisk/download/" + row.id)
+                    }).catch(() => {
+                        window.open('download/' + row.id + '?isDownload=false')
+                    })
+                }
+                // 如果要预览的文件类型不在支持范围内，则转到下载页面
+                else if (!this.previewable.includes(ext) && type != 'code' && type != 'configuration') {
+                    this.$message.error('不支持预览的文件类型，正在跳转到下载页面')
+                    setTimeout(() => {
+                        this.downloadFile(index, row)
+                    }, 2000)
+                } else {
+                    window.open('download/' + row.id + '?isDownload=false')
+                }
+            },
+            downloadFile(index, row) {
+                window.open('download/' + row.id + '?isDownload=true')
+            },
+            enterFolder(index, row) {
+                console.log('enter folder', row)
+                if (row != null)
+                    this.path += row.name + '/'
+                if (this.mode == 'owner')
+                    this.getInfo()
+                // 如果处于分享模式下
+                else {
+                    if (row !== null)
+                        this.folderId_stack.push(row.id)
+                    var stack = this.folderId_stack
+                    var parentFolderId = null
+                    // 如果当前处于根目录，那么
+                    if (stack.length === 1) {
+                        parentFolderId = null
+                    } else {
+                        parentFolderId = stack[0]
+                    }
+                    if (this.path !== '/')
+                        this.guestGetFolder(stack[stack.length - 1], parentFolderId)
+                    else
+                        this.guestGetRoot(this.url, this.code)
+                }
+            },
+            editPersonalize(flag) {
+                console.log("点击更改", flag)
+                if (flag !== undefined) {  //点击确定
+                    this.dialogFormVisible3 = false
+                    this.setStorage("Personalize", this.Personalize)
+                    //this.reverseJSON(this.tableData)
+                } else
+                    this.dialogFormVisible3 = true
+
+            },
+            // 初始化表格数据
+            initTable() {
+                // 格式化日期
+                for (let data of this.tableData) {
+                    data.updateTime = this.dateFormat('YYYY-mm-dd HH:MM', new Date(data.updateTime))
+                }
+                // 格式化文件大小
+                for (let data of this.tableData) {
+                    console.log(data.type != 'folder', data.size)
+                    if (data.type != 'folder')
+                        data['small'] = data.size <= 51200;
+                    if (data.size != undefined)
+                        data.size = this.formatSize(data.size)
+                }
+                // 添加附加属性
+                for (let data of this.tableData) {
+                    if (data.type == 'folder')
+                        data['isfolder'] = true
+                    else
+                        data['isfolder'] = false
+                }
+            },
+
+            deleteFiles() {
+                console.log(this.multipleSelection)
+                // 将要删除的文件夹和文件进行分类
+                var list = this.multipleSelection
+                var folderId = new Array()
+                var fileId = new Array()
+                for (const listKey in list) {
+                    if (list[listKey].isfolder)
+                        folderId.push(list[listKey].id)
+                    else
+                        fileId.push(list[listKey].id)
+                }
+                // 显示提交删除文件夹和文件的数量
+                this.$message.info('删除文件夹数量：' + folderId.length + '，删除文件数量：' + fileId.length)
+                // 统计删除文件夹和文件的数量
+                var folderCount = 0, fileCount = 0
+                // 装配参数
+                var folder_params = new URLSearchParams()
+                folder_params.append("username", this.username)
+                for (const folderIdElement of folderId) {
+                    folder_params.append('folderId', folderIdElement)
+                }
+                var file_params = new URLSearchParams()
+                file_params.append("username", this.username)
+                for (const fileIdElement of fileId) {
+                    file_params.append('fileId', fileIdElement)
+                }
+                // 聚集型批量删除
+                var that = this
+                axios.all([that.axiosDeleteFolder(folder_params), that.axiosDeleteFile(file_params)])
+                    .then(axios.spread(function (folder_info, file_info) {
+                        if (folder_info != null) {
+                            folder_info = folder_info.data
+                            if (folder_info.code == 200) {
+                                folderCount += folder_info.resData.folderCnt
+                                fileCount += folder_info.resData.fileCnt
+                            }
+                        }
+                        if (file_info != null) {
+                            file_info = file_info.data
+                            if (file_info.code == 200) {
+                                fileCount += file_info.resData.fileCnt
+                            }
+                        }
+
+                        // 显示总共删除的文件夹和文件数量
+                        if (folderCount != 0 || fileCount != 0) {
+                            that.$message.success('总共删除文件夹数量：' + folderCount + '，删除文件数量：' + fileCount)
+                            that.getInfo()
+                        }
+                        // 若没有删除任何文件和文件夹，则显示相应的错误信息
+                        else {
+                            if (folderId.length != 0) {
+                                console.error('folder_info', folder_info)
+                                that.$message.error('文件夹删除失败: ' + folder_info.msg)
+                            }
+                            if (fileId.length != 0) {
+                                console.error('file_info', file_info)
+                                that.$message.error('文件删除失败: ' + file_info.msg)
+                            }
+                        }
+
+                    }))
+
+            },
+            uploadFile() {
+                localStorage.setItem("username", this.username)
+                localStorage.setItem("folderPath", this.path)
+                window.open("upload.html", '_blank', 'width=500px,height=500px')
+            },
+            formatSize(n) {
+                if (n < 1024)
+                    return n + " B"
+                if (n < 1048576)
+                    return (n / 1024).toFixed(1) + " KB"
+                if (n < 1073741824)
+                    return (n / 1048576).toFixed(1) + " MB"
+                else
+                    return (n / 1073741824).toFixed(1) + " GB"
+            },
+            logout() {
+                localStorage.removeItem("userInfo");  //清除登录缓存
+                window.location.assign("login.html")  //跳转到登录页面
+            },
+            deleteFilesConfirm() {
+                if (this.multipleSelection.length === 0) {
+                    this.$message({
+                        type: 'error',
+                        message: '您没有选中任何文件'
+                    });
+                    return;
+                }
+                this.$confirm('此操作将永久删除该文件, 是否继续?', '确认删除', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.deleteFiles()
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消删除'
+                    });
+                });
+            },
+            logoutConfirm() {
+                this.$confirm('您将退出登录，是否继续？', '确认注销', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.logout()
+                    this.$message({
+                        type: 'success',
+                        message: '正在注销登录!'
+                    });
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '取消注销操作'
+                    });
+                });
+            },
+            shareFiles() {
+                if (this.multipleSelection.length === 0) {
+                    this.$message({
+                        type: 'error',
+                        message: '您没有选中任何文件'
+                    });
+                }
+                // this.dialogFormVisible4 = true
+                var params = new URLSearchParams()
+                params.append("username", this.username)
+                params.append("code", this.form4.code)
+                params.append("day", this.form4.day)
+                for (var i = 0; i < this.multipleSelection.length; ++i) {
+                    if (this.multipleSelection[i].isfolder) {
+                        params.append("folderId", this.multipleSelection[i].id)
+                    } else {
+                        params.append("fileId", this.multipleSelection[i].id)
+                    }
+                }
+                axios.post("./share/add", params).then(res => {
+                    var info = res.data
+                    console.log(info)
+                    if (info.code === 200) {
+                        info = info.resData.info
+                        var s = this.username + '给您分享了一些文件，请点击以下链接查看：' + window.location.href + '?share_id=' + info.url + ' 。'
+                        if (info.code != null) {
+                            s += '提取码为：' + info.code + '。'
+                        }
+                        if (info.expireTime != null) {
+                            s += '请在' + this.dateFormat('YYYY-mm-dd HH:MM:SS', new Date(info.expireTime)) + '前查看。'
+                        }
+                        // 询问用户是否要复制到剪切板
+                        this.$confirm(s, '分享成功', {
+                            confirmButtonText: '复制到剪切板',
+                            cancelButtonText: '确定',
+                            type: 'success'
+                        }).then(() => {
+                            this.copyInPasteboard(s)
+                        }).catch(e => {
+                            console.warn('复制失败', e)
+                        });
+                        this.dialogFormVisible4 = false
+                    } else {
+                        this.$message({
+                            type: 'error',
+                            message: '文件分享失败：' + info.msg
+                        });
+                    }
+                })
+            },
+            // 从分享模式回到自己的主页
+            returnIndex() {
+                this.$confirm('您将要回到个人网盘首页, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    window.location.href = "index.html"
+                }).catch(() => {
+
+                });
+
+                // this.mode = 'owner'
+                // this.path = '/'
+                // this.path_stack = []
+                // this.getInfo()
+            },
+            checkPassword(s) {
+                var pattern = /^[A-Za-z0-9]{4,18}$/
+                return pattern.test(s)
+            },
+            checkNickname(s) {
+                var pattern = /^[\u4E00-\u9FA5A-Za-z0-9]{1,15}$/
+                return pattern.test(s)
+            },
+            editUserInfo() {
+                this.form3.nickname = this.nickname
+                this.dialogFormVisible2 = true
+            },
+            // 返回上次进入的目录
+            backPath() {
+                if (this.mode == 'share') {
+                    this.upPath()
+                    return
+                }
+                var stack = this.path_stack
+                if (stack.length == 1) {
+                    this.$message.error('已返回到初始状态')
+                    return
+                }
+                // 获取上一个状态的地址
+                stack.pop()
+                this.path = stack[stack.length - 1]
+                this.getInfo()
+                // 由于是回到上一个状态，所以要把新添的地址删除
+                if (stack.length > 1)
+                    stack.pop()
+            },
+            // 进入键入的目录
+            enterPath() {
+                var path = this.path
+                var idx = path.indexOf('/')
+                if (idx == -1 || idx != 0) {
+                    this.$message.error('文件目录格式不正确')
+                    // 利用栈，将上一次正确的路径还原
+                    var stack = this.path_stack
+                    this.path = stack[stack.length - 1]
+                    return
+                }
+                // 如果文件目录末尾不为 / 则自动添加
+                if (path.charAt(path.length - 1) != '/')
+                    this.path = path.concat('/')
+                this.getInfo()
+            },
+            // 回到上级目录
+            upPath() {
+                var path = this.path
+                if (path == '/') {
+                    this.$message.error('当前已处于根目录')
+                    return
+                }
+                // 删除最后一个字符
+                path = path.substring(0, path.length - 1)
+                // 截取到最后一个/的位置
+                var idx = path.lastIndexOf('/')
+                if (idx == -1) {
+                    path = '/'
+                } else {
+                    path = path.substring(0, idx + 1)
+                }
+                console.log(path)
+                this.path = path
+                // 如果处于分享模式下
+                if (this.mode == 'share') {
+                    this.folderId_stack.pop()
+                    this.enterFolder(null, null)
+                    return
+                }
+                this.getInfo()
+
+            },
+            // 刷新页面
+            refresh() {
+                if (this.mode == 'owner')
+                    this.getInfo()
+                else
+                    this.enterFolder(null, null)
+            },
+            homePath() {
+                this.path = '/'
+                this.getInfo()
+            },
+            // 新建文件夹
+            newFolder(view) {
+                this.$prompt('当前路径：' + this.path, '新建文件夹', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    inputPattern: /^[^\/\\:?*'"^<>\[\]$#]*$/,
+                    inputErrorMessage: '文件夹名称格式不正确'
+                }).then(({value}) => {
+                    var params = new URLSearchParams()
+                    params.append("username", this.username)
+                    params.append("path", this.path)
+                    params.append("name", value)
+                    axios.post('./folder/create', params).then(res => {
+                        var data = res.data
+                        if (data.code === 200) {
+                            this.$message({
+                                type: 'success',
+                                message: '新建文件夹成功'
+                            });
+                            this.getInfo()
+                            if (view == true) {
+                                this.openFolder(this.folderView.path)
+                            }
+                        } else {
+                            this.$message({
+                                type: 'error',
+                                message: '新建文件夹失败'
+                            });
+                        }
+                    })
+                }).catch(() => {
+
+                });
+            },
+            // 打开在线编辑
+            openOnlineEditor(id) {
+                console.log(id)
+                localStorage.setItem("edit_file_id", id)
+                window.open("./online_doc.html", "_blank")
+            },
+            // 显示外链
+            fileLink() {
+                // 询问下载模式还是预览模式
+                this.dialogTableVisible6 = true
+            },
+            // 外链展示方式选择
+            fileLinkConfirm(isDownload) {
+                this.dialogTableVisible6 = false
+                var s = ""
+                for (var file of this.multipleSelection) {
+                    if (!file.isfolder) {
+                        s += window.location.origin + "/netdisk/download/" + file.id + "?isDownload=" + isDownload + "\n"
+                    }
+                }
+                // 询问是否复制到剪贴板
+                this.$confirm('' + s, '外链', {
+                    confirmButtonText: '复制到剪贴板',
+                    cancelButtonText: '取消',
+                }).then(() => {
+                    this.copyInPasteboard(s)
+                }).catch(() => {
+
+                });
+
+            },
+            dateFormat(fmt, date) {
+                let ret;
+                const opt = {
+                    "Y+": date.getFullYear().toString(),        // 年
+                    "m+": (date.getMonth() + 1).toString(),     // 月
+                    "d+": date.getDate().toString(),            // 日
+                    "H+": date.getHours().toString(),           // 时
+                    "M+": date.getMinutes().toString(),         // 分
+                    "S+": date.getSeconds().toString()          // 秒
+                    // 有其他格式化字符需求可以继续添加，必须转化成字符串
+                };
+                for (let k in opt) {
+                    ret = new RegExp("(" + k + ")").exec(fmt);
+                    if (ret) {
+                        fmt = fmt.replace(ret[1], (ret[1].length == 1) ? (opt[k]) : (opt[k].padStart(ret[1].length, "0")))
+                    }
+                }
+                return fmt;
+            },
+            updateUserInfo() {
+                if (!this.checkNickname(this.form3.nickname)) {
+                    this.$message.error('昵称格式不正确')
+                } else {
+                    var params = new URLSearchParams()
+                    params.append("username", this.username)
+                    params.append("nickname", this.form3.nickname)
+                    params.append("old_password", this.form3.old_password)
+                    params.append("password", this.form3.password)
+                    params.append("token", this.token)
+                    axios.post("./user/update", params).then(res => {
+                        this.dialogFormVisible2 = false
+                        var info = res.data
+                        if (info == 1)
+                            this.$message.error('昵称格式不正确')
+                        else if (info == 2)
+                            this.$message.error('密码格式不正确')
+                        else if (info == 3)
+                            this.$message.error('原密码不正确')
+                        else if (info == 4)
+                            this.$message.error('身份校验失败，请注销后重新登录再次尝试');
+                        else if (info == 5) {
+                            this.$message.success('昵称更新成功')
+                            var userInfo = this.getStorage("userInfo")  //从缓存中取出用户信息
+                            this.nickname = userInfo.nickname = this.form3.nickname  //更新昵称
+                            console.log(userInfo)
+                            this.setStorage("userInfo", userInfo)  //将更新后的信息存入
+                        } else if (info == 6) {
+                            this.$message.success('信息更新成功')
+                            setTimeout(this.logout, 3000)
+                        } else
+                            this.$message.error('信息更新失败')
+                    })
+                }
+            },
+            toManage() {
+                window.location.assign("manage.html")  //跳转到登录页面
+            },
+            getPublicInfo() {
+                var params = new URLSearchParams()
+                params.append("username", this.username)
+                params.append("token", this.token)
+                axios.post("./file/get/public", params).then(res => {
+                    var tmp = res.data
+                    tmp = JSON.parse(tmp)
+                    if (this.Personalize.descending)  //反转
+                        this.reverseJSON(tmp)
+
+                    for (var i = 0; i < tmp.length; ++i) {
+                        tmp[i].size = this.formatSize(tmp[i].size)
+                    }
+                    this.tableData = tmp
+                })
+            },
+            // 打开文件夹浏览框
+            openFolderViewer(mode) {
+                var list = this.multipleSelection
+                if (list.length === 0) {
+                    this.$message.error('未选择任何文件夹或文件')
+                    return
+                }
+                this.openFolder(this.path)
+                this.folderView.path = this.path
+                this.dialogTableVisible5 = true
+                this.folderView.mode = mode
+            },
+            move_copy() {
+                console.log('move_copy')
+                // 将用户选择的内容进行分类
+                var list = this.multipleSelection
+                var folderList = [], fileList = []
+                for (var i = 0; i < list.length; ++i) {
+                    if (list[i].type === "folder")
+                        folderList.push(list[i])
+                    else
+                        fileList.push(list[i])
+                }
+                this.folderView.folderList = folderList
+                this.folderView.fileList = fileList
+                if (this.folderView.mode === 'move') {
+                    this.move()
+                } else {
+                    this.copy()
+                }
+            },
+            // 移动文件
+            move() {
+                console.log('move')
+                var that = this
+                axios.all([that.axiosMoveFile(), that.axiosMoveFolder()]).then(axios.spread(function (moveFile, moveFolder) {
+                    moveFile = moveFile.data
+                    moveFolder = moveFolder.data
+                    var fileCnt = moveFile.resData.fileCnt + moveFolder.resData.fileCnt
+                    var folderCnt = moveFolder.resData.folderCnt
+                    if (moveFile.code == 200 && moveFolder.code == 200) {
+                        that.$message.success(fileCnt + "个文件移动成功，" + folderCnt + "个文件夹移动成功")
+                        that.dialogTableVisible5 = false
+                        that.getInfo()
+                    } else if (moveFile.code != 200) {
+                        that.$message.error(moveFile.msg)
+                    } else if (moveFolder.code != 200) {
+                        that.$message.error(moveFolder.msg)
+                    }
+                }))
+            },
+            // 复制文件
+            copy() {
+                console.log('copy')
+                var that = this
+            },
+            // 预览打开文件夹 （查看文件夹中的文件）
+            openFolder(path) {
+                this.folderView.path = path
+                axios.get("./folder/queryByPath?username=" + this.username + "&path=" + path).then(res => {
+                    var info = res.data
+                    if (info.code == 200) {
+                        info = info.resData.fileInfo.list
+                        console.log("预览打开文件夹列表", info)
+                        this.folderView.data = new Array()
+                        for (var i = 0; i < info.length; ++i) {
+                            // 格式化日期
+                            info[i].updateTime = this.dateFormat('YYYY-mm-dd HH:MM', new Date(info[i].updateTime))
+                            this.folderView.data.push(info[i])
+                        }
+                    } else {
+                        this.$message.error(info.msg)
+                    }
+                })
+            },
+            // 预览打开文件夹 回退上一层
+            upPathView() {
+                var path = this.folderView.path.substring(0, this.folderView.path.length - 1)
+                var index = path.lastIndexOf("/")
+                if (index == -1) {
+                    this.$message.error("已经是根目录")
+                    return
+                }
+                this.folderView.path = path.substring(0, index + 1)
+                this.openFolder(this.folderView.path)
+            },
+            // 打开在线文档页面
+            online_doc() {
+                window.open("online_doc.html", "_blank")
+            },
+            reverseJSON(theJSON) {
+                var len = theJSON.length
+                for (var i = 0; i <= len / 2; i++) {
+                    this.swapObj(theJSON, i, len - i - 1)
+                }
+            },
+            swapObj(arr, i, j) {
+                var tmp = arr[i]
+                arr[i] = arr[j]
+                arr[j] = tmp
+            },
+            // 重置table高度
+            resetHeight() {
+                return new Promise((resolve, reject) => {
+                    this.tableH = 0
+                    resolve()
+                })
+            },
+            // 设置table高度
+            fetTableHeight() {
+                this.resetHeight().then(res => {
+                    this.tableH = document.documentElement.clientHeight - 200
+                })
+            },
+            // 复制到用户到剪贴板
+            copyInPasteboard(s) {
+                var transfer = document.createElement('textarea');  //textarea支持换行
+                document.body.appendChild(transfer);
+                transfer.value = s;  // 这里表示想要复制的内容
+                transfer.focus();
+                transfer.select();
+                if (document.execCommand('copy')) {
+                    document.execCommand('copy');
+                }
+                transfer.blur();
+                // console.log('复制成功');
+                document.body.removeChild(transfer);
+
+                this.$message({
+                    type: 'success',
+                    message: '复制成功!'
+                });
+            }
+
+        }
+    })
+
+</script>
+</html>

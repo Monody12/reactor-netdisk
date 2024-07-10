@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <!--禁用缓存-->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
+
+    <title>在线编辑文档</title>
+    <link rel="icon" href="img/favicon.ico">
+    <script src="js/axios.min.js" type="text/javascript"></script>
+    <link rel="stylesheet" type="text/css" href="css/index.css"/>
+    <script src="js/vue.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/index.js" type="text/javascript"></script>
+    <style type="text/css">
+
+        /*body {*/
+        /*    display: flex;*/
+        /*    align-items: center; !*定义body的元素垂直居中*!*/
+        /*    justify-content: center; !*定义body的里的元素水平居中*!*/
+        /*}*/
+
+        * {
+            font-family: "微软雅黑", serif;
+        }
+
+        /*
+            用于鼠标点击文件名进行预览
+         */
+        .fileClick {
+            cursor: pointer;
+        }
+
+        .fileClick:hover {
+            color: #1890ff;
+        }
+
+        .content {
+            width: 90%;
+            height: 80%;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <hgroup>
+        <h2 style="display: inline-block">用户名：{{username}} 昵称：{{userinfo.nickname}} 的云{{mode=='doc'?'文档':'文件'}}</h2>
+
+        <div style="float: right">
+
+            <el-dropdown @command="handleCommand">
+                <el-avatar :size="45" :src="image" @error="errorHandler">
+                    <img src="https://s2.loli.net/2022/04/23/5VzqlWpkevLfdiQ.png"/>
+
+                </el-avatar>
+                <el-dropdown-menu slot="dropdown">
+                    <el-dropdown-item command="a">返回主页</el-dropdown-item>
+                    <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+                </el-dropdown-menu>
+            </el-dropdown>
+        </div>
+    </hgroup>
+    <div>
+        <h3>
+            目标文档：<span>{{doc.title}}</span>&nbsp;&nbsp;
+            同步状态：<span>{{sync_status_text[sync_status]}}</span></h3>
+    </div>
+
+    <el-descriptions title="" :column="1" border>
+        <el-descriptions-item label="文档实用工具">
+            <el-button type="primary" @click="_create" plain>新建文档</el-button>
+<!--            <el-button type="primary" @click="_export" plain>导出文档</el-button>-->
+            <el-button type="primary" @click="_import" plain>导入文档</el-button>
+            <el-button type="primary" @click="_save" plain>保存文档</el-button>
+        </el-descriptions-item>
+    </el-descriptions>
+    <br><br>
+    <div class="content">
+        <el-input
+                onkeydown="tab_input(this)"
+                @input="content_change"
+                type="textarea"
+                placeholder="请输入内容"
+                maxlength="20000"
+                show-word-limit
+                resize="both"
+                :autosize="{ minRows: 25, maxRows: 80}"
+                v-model="textarea">
+        </el-input>
+        </el-input>
+    </div>
+
+    <!-- 云文档预览 -->
+    <el-dialog title="云文档预览" :visible.sync="dialogTableVisible1">
+        <el-table :data="doc_view" :row-key="row => { return row.id }">
+            <el-table-column property="title" label="云文档标题">
+                <template slot-scope="scope">
+                    <!-- 鼠标点击名称进入该文件夹 -->
+                    <div class="fileClick" @click="get_doc_content(scope.row.id)">
+                        {{ scope.row.title }}
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column property="updateTime" label="修改日期" width="300"
+            ></el-table-column>
+            <el-table-column label="操作" width="50">
+                <template slot-scope="scope">
+                    <el-button type="text" @click="delete_doc(scope.row.id)">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+
+    </el-dialog>
+</div>
+</body>
+<script>
+    new Vue({
+        //作用域
+        el: '#app',
+        //初始化数据
+        data: {
+            mode: 'doc', // 工作模式 doc 云文档模式，file 云文件模式
+            username: '',
+            tableData: [],
+            userinfo: {},
+            image: "http://182.92.224.215:8082/netdisk/upload/guest/%E6%9C%AA%E5%91%BD%E5%90%8D.jpg",
+            target_file_id: undefined,
+            /**
+             * 同步状态：0 无需同步 1 未同步，2 正在同步，3 已同步，4 与服务器断开连接
+             */
+            sync_status: 0,
+
+            sync_status_text: ['无需同步', '未同步', '正在同步', '已同步', '与服务器断开连接'],
+            textarea: null,
+            // 文本是否变化
+            change: false,
+            // 是否建立 websocket 连接
+            is_connect: false,
+            // websocket 连接
+            ws: null,
+            doc: {
+                id: null,
+                title: '尚未选择',
+                content: null,
+                create_time: null,
+                update_time: null,
+            },
+            // 所有云文档摘要预览
+            doc_view: [],
+            // 界面显示
+            dialogTableVisible1: false,
+            dialogTableVisible2: false,
+        },
+        created: function () {
+            this.tableData = new Array()
+            // 检测是否有cookie，并校验cookie是否有效
+            var cookie = document.cookie
+
+            // 寻找到cookie
+            if (cookie.length > 0) {
+                // 是否找到check字段的cookie
+                var find = false
+                var cookie_arr = cookie.split(";")
+                console.log('用户cookie: ', cookie_arr)
+                for (var i = 0; i < cookie_arr.length; i++) {
+                    var cookie_item = cookie_arr[i].split("=")
+                    // 当存在多个cookie时，切片会导致 'check' 变成' check'
+                    if (cookie_item[0] == "check" || cookie_item[0] == " check") {
+                        find = true
+                        this.token = cookie_item[1]
+                        // 获取到base64加密的校验码，进行解密并向服务器发送验证
+                        var check = window.atob(this.token)
+                        var obj = JSON.parse(check)
+
+                        var params = new URLSearchParams()
+                        params.append('username', obj.username)
+                        params.append('token', obj.uuid)
+                        axios.post('../userservice/login/verify', params).then(res => {
+                            var info = res.data
+                            if (info.code == 200) {
+                                this.username = obj.username
+                                this.token = obj.uuid
+                                console.log('created: function: this.username', this.username)
+                                setTimeout(() => {
+                                    this.getUserInfo()
+                                }, 100)
+                            }
+                            // 验证失败
+                            else {
+                                alert(info.msg)
+                                window.location.href = "./login.html"
+                            }
+                        })
+                        break
+                    }
+                }
+                if (!find) {
+                    // 在多个cookie中找不到check字段的cookie
+                    window.location.href = "./login.html"
+                }
+            } else {
+                // 没有cookie，跳转到登录页面
+                window.location.href = "./login.html"
+            }
+
+
+            // var Personalize = this.getStorage("Personalize")  //加载用户个性化设置
+            // if (Personalize != null)
+            // 	this.Personalize = Personalize
+        },
+        mounted: function () {
+            var that = this
+            this.$nextTick(function () {
+                    // Code that will run only after the
+                    // entire view has been rendered
+                    window.addEventListener('beforeunload', function (e) {
+                        var message = '确定离开当前页面吗？'
+                        e.returnValue = message
+                        return message
+                    })
+
+                    // 检测模式，如果localstorage中存有待编辑的的文档，则打开这个文档
+                    var doc_id = localStorage.getItem('edit_file_id')
+                    if (doc_id != null) {
+                        // 移除这个storage
+                        localStorage.removeItem('edit_file_id')
+                        that.mode = 'file'
+                        that.get_doc_content(doc_id)
+
+                    }
+
+                    // 设置定时器，自动检测文档的同步状态
+                    setInterval(function () {
+                        if (that.change == true) {
+                            // 设为未修改
+                            that.change = false
+                            // 设为未同步
+                            that.sync_status = 1
+                        }
+                    }, 2000)
+
+                    // 设置定时器，自动同步文档
+                    setInterval(function () {
+                        var socket = that.ws
+                        if (that.sync_status == 1 && socket != null && socket.readyState === 1) {
+                            that.sync_status = 2
+                            var obj = {'id': that.doc.id}
+                            if (that.mode=='file')
+                                obj['type'] = 'file'
+                            obj['content'] = that.textarea
+                            socket.send(JSON.stringify(obj))
+                        }
+                    }, 8000)
+                }
+            )
+
+
+        },
+        //函数写在这里
+        methods: {
+            setStorage(key, value) {
+                localStorage.setItem(key, JSON.stringify(value));
+            },
+            getStorage(key) {
+                return JSON.parse(localStorage.getItem(key));
+            },
+            // 加载头像失败时，显示默认头像
+            errorHandler() {
+                return true
+            },
+            getUserInfo() {
+                var username = this.username
+                if (username == undefined) {
+                    alert('请先登录')
+                    return
+                }
+                axios.get('./userinfo/get/full?username=' + username).then(res => {
+                    var info = res.data
+                    console.log('getUserInfo:', info)
+                    if (info.code == 200) {
+                        this.userinfo = JSON.parse(info.msg)
+                    } else {
+                        alert(info.msg)
+                    }
+                })
+            },
+            // 监听头像框下拉菜单事件
+            handleCommand(command) {
+                this.$message('click on item ' + command);
+                if (command == 'a') {
+
+                } else if (command == 'b') {
+
+                } else if (command == "logout") {
+                    this.logoutConfirm()
+                }
+            },
+            // 新建文档
+            _create() {
+                this.$prompt('请输入新建文档标题', '提示', {
+                    inputValue: this.dateFormat("YYYY-mm-dd HH:MM:SS", new Date()) + ' - 新建云文档',
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                }).then(({value}) => {
+                    var params = new URLSearchParams()
+                    params.append('username', this.username)
+                    params.append('title', value)
+                    axios.post('./onlinedoc/new', params).then(res => {
+                        var info = res.data
+                        if (info.code == 200) {
+                            this.doc = info.resData.onlinedoc
+                            console.log(this.doc)
+                            this.$message.success("云文档创建成功")
+                            this._save()
+                        } else {
+                            this.$message.error(info.msg)
+                            console.error(info)
+                        }
+                    })
+                })
+            },
+            // 导入文档
+            _import() {
+                this.dialogTableVisible1 = true
+                axios.get('./onlinedoc/get/list?username=' + this.username).then(res => {
+                    var info = res.data
+                    if (info.code == 200) {
+                        this.doc_view = info.resData.onlinedocs
+                    } else {
+                        this.$message.error(info.msg)
+                        console.error(info)
+                    }
+                })
+            },
+            // 获取云文档内容
+            get_doc_content(id) {
+                this.dialogTableVisible1 = false
+                var url
+                if (this.mode == 'doc') {
+                    url = './onlinedoc/get/content?id=' + id
+                } else {
+                    url = "./onlinefile/get?id=" + id
+                }
+                axios.get(url).then(res => {
+                    var info = res.data
+                    if (info.code == 200) {
+                        var content = info.resData.onlinedoc.content
+                        this.textarea = content
+                        this.doc = info.resData.onlinedoc
+                        this.change = false
+                        // 刚导入文档是，同步状态为无需同步
+                        this.sync_status = 0
+                        this.$message.success("导入成功")
+                        this._save()
+
+                        // 检查字数是否超过上限
+                        console.log(this.doc.content.length)
+                        if (this.doc.content.length >= 20000) {
+                            alert("文档字数超过预设上限！可能会导致与服务器断开连接等无法保存的异常。")
+                        }
+
+                    } else {
+                        this.$message.error(info.msg)
+                        console.error(info)
+                    }
+                })
+            },
+
+            // 导出文档
+            _export() {
+
+            },
+            // 保存文档
+            _save() {
+                if (this.doc.id == null) {
+                    this.$message.info("没有选中文件，无法保存！")
+                    return
+                }
+                if (this.is_connect == false) {
+                    // 建立websocket连接
+                    this.connect()
+                    return
+                }
+            },
+            connect() {
+                // 建立websocket连接
+                var url = 'ws://' + window.location.host + '/netdisk/websocket'
+                var socket = new WebSocket(url)
+                this.ws = socket
+                socket.onerror = err => {
+                    this.is_connect = false
+                    this.$message.error('无法与服务器建立连接，文档无法自动同步！')
+                    console.log(err);
+                };
+                socket.onopen = event => {
+                    this.is_connect = true
+                    this.sync_status = 1
+                    this.$message.success('与服务器建立连接成功，文档将会自动同步')
+                    console.log(event);
+                };
+                socket.onmessage = msg => {
+                    this.$message.info(msg.data)
+                    if (msg.data === '文档内容已同步') {
+                        // 标记为已同步
+                        this.sync_status = 3
+                    }
+                    console.log(msg);
+                };
+                socket.onclose = () => {
+                    this.is_connect = false
+                    this.sync_status = 4
+                    this.$message.error('与服务器断开连接，文档无法自动同步！')
+                    console.log("连接关闭");
+                };
+            },
+            content_change() {
+                this.change = true
+            },
+            // 删除文档
+            delete_doc(id) {
+                this.dialogTableVisible1 = false
+                this.$confirm('此操作将永久删除该文档, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    var params = new URLSearchParams()
+                    params.append('id', id)
+                    params.append('username', this.username)
+                    axios.post('./onlinedoc/delete', params).then(res => {
+                        var info = res.data
+                        if (info.code == 200) {
+                            this.$message.success("删除成功")
+                            // 如果删除的文档id与当前编辑的文档id相同
+                            if (id == this.doc.id) {
+                                this.doc = {
+                                    id: null,
+                                    title: '尚未选择',
+                                    content: null,
+                                    create_time: null,
+                                    update_time: null,
+                                }
+                                this.textarea = ''
+                                this.change = false
+                                this.sync_status = 0
+                            }
+                        } else {
+                            this.$message.error(info.msg)
+                            console.error(info)
+                        }
+                    })
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消删除'
+                    });
+                });
+            },
+            dateFormat(fmt, date) {
+                let ret;
+                const opt = {
+                    "Y+": date.getFullYear().toString(),        // 年
+                    "m+": (date.getMonth() + 1).toString(),     // 月
+                    "d+": date.getDate().toString(),            // 日
+                    "H+": date.getHours().toString(),           // 时
+                    "M+": date.getMinutes().toString(),         // 分
+                    "S+": date.getSeconds().toString()          // 秒
+                    // 有其他格式化字符需求可以继续添加，必须转化成字符串
+                };
+                for (let k in opt) {
+                    ret = new RegExp("(" + k + ")").exec(fmt);
+                    if (ret) {
+                        fmt = fmt.replace(ret[1], (ret[1].length == 1) ? (opt[k]) : (opt[k].padStart(ret[1].length, "0")))
+                    }
+                }
+                return fmt;
+            },
+        }
+    })
+
+    function tab_input(obj) {
+        // 如果用户输入制表符，则插入制表符而非切换到下一个输入框
+        if (event.keyCode == 9) {
+            event.returnValue = false;
+            // 向光标位置插入制表符
+            var len = obj.value.length, start = obj.selectionStart, end = obj.selectionEnd;
+            obj.value = obj.value.substring(0, start) + "\t" + obj.value.substring(end, len);
+            obj.selectionStart = start + 1;
+            obj.selectionEnd = start + 1;
+        }
+        // 如果为单双引号自动补全
+
+
+    }
+</script>
+</html>
