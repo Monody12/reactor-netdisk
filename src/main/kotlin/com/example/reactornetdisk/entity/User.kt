@@ -6,11 +6,11 @@ import java.time.LocalDateTime
 
 @Table("user")
 data class User(
-    @Id val id: Long? = null,
-    val username: String,
+    @Id var id: Long? = null,
+    var username: String,
     var password: String,
     var email: String? = null,
-    val createTime : LocalDateTime? = null,
-    val updateTime : LocalDateTime? = null,
-    val deleteFlag: Boolean? = null
+    var createAt : LocalDateTime? = null,
+    var updateAt : LocalDateTime? = null,
+    var deleteFlag: Boolean? = null
 )
