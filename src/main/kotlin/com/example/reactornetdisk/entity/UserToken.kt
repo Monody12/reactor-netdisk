@@ -7,9 +7,9 @@ import java.time.LocalDateTime
 @Table("user_token")
 data class UserToken(
     @Id var id: Long? = null,
-    var userId: Long?,
+    var userId: Int?,
     var token: String?,
-    var expireAt: LocalDateTime?,
-    var createdAt: LocalDateTime?,
-    var updatedAt: LocalDateTime?
+    var expireAt: LocalDateTime? = LocalDateTime.now().plusDays(7),
+    var createdAt: LocalDateTime? = null,
+    var updatedAt: LocalDateTime? = null
 )

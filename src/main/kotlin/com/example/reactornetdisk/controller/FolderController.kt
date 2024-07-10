@@ -1,12 +1,12 @@
 package com.example.reactornetdisk.controller
 
-import com.example.reactornetdisk.dto.FolderDto
+import com.example.reactornetdisk.dto.FolderDTO
 import com.example.reactornetdisk.entity.ApiResponse
 import com.example.reactornetdisk.entity.BaseFile
 import com.example.reactornetdisk.entity.Folder
 import com.example.reactornetdisk.service.FolderService
 import org.springframework.web.bind.annotation.*
-import reactor.core.publisher.Flux
+import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
 
 @RestController
@@ -18,9 +18,12 @@ class FolderController(
      * 创建文件夹
      */
     @PostMapping
-    fun createFolder(@RequestBody folderDto: FolderDto) : Mono<ApiResponse<Folder>> {
+    fun createFolder(
+        @RequestBody folderDto: FolderDTO,
+        exchange: ServerWebExchange
+    ) : Mono<ApiResponse<Folder>> {
         return folderService.createFolder(
-            userId = 1,
+            userId = exchange.attributes["userId"] as Int,
             parentId = folderDto.parentId,
             folderName = folderDto.name
         ).map { ApiResponse(200,"创建成功", it) }
@@ -30,8 +33,11 @@ class FolderController(
      * 获取指定文件夹中的文件和文件夹
      */
     @GetMapping
-    fun getFilesAndFolders(@RequestParam(required = false) parentId: Long?): Mono<ApiResponse<List<BaseFile>>> {
-        return folderService.getFilesAndFolders(1, parentId).collectList()
+    fun getFilesAndFolders(
+        @RequestParam(required = false) parentId: Long?,
+        exchange: ServerWebExchange
+    ): Mono<ApiResponse<List<BaseFile>>> {
+        return folderService.getFilesAndFolders(exchange.attributes["userId"] as Int, parentId).collectList()
             .map { files -> ApiResponse(code = 200, msg = "查询成功", data = files) }
     }
 
@@ -44,10 +50,11 @@ class FolderController(
     @DeleteMapping
     fun deleteFileAndFolder(
         @RequestParam(required = false) fileIdList: List<Long>?,
-        @RequestParam(required = false) folderIdList: List<Long>?
+        @RequestParam(required = false) folderIdList: List<Long>?,
+        exchange: ServerWebExchange
     ): Mono<ApiResponse<String>> {
         return folderService.deleteFileAndFolder(
-            userId = 1,
+            userId = exchange.attributes["userId"] as Int,
             fileIdList = fileIdList,
             folderIdList = folderIdList
         ).map { ApiResponse(200, it, null) }

@@ -6,7 +6,7 @@ import java.time.LocalDateTime
 
 @Table("user")
 data class User(
-    @Id var id: Long? = null,
+    @Id var id: Int? = null,
     var username: String,
     var password: String,
     var email: String? = null,

@@ -1,6 +1,7 @@
 package com.example.reactornetdisk.controller
 
 import com.example.reactornetdisk.entity.ApiResponse
+import com.example.reactornetdisk.exception.FileForbiddenException
 import com.example.reactornetdisk.exception.FileNotFoundInDatabaseException
 import com.example.reactornetdisk.exception.FileNotFoundInFileSystemException
 import com.example.reactornetdisk.service.FileService
@@ -12,6 +13,7 @@ import org.springframework.core.io.support.ResourceRegion
 import org.springframework.http.*
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.kotlin.core.publisher.toMono
@@ -32,12 +34,13 @@ class FileController(
     @PostMapping("/upload")
     fun uploadFiles(
         @RequestPart("files") filePartFlux: Flux<FilePart>,
-        @RequestParam(required = false) folderId: Long?
+        @RequestParam(required = false) folderId: Long?,
+        exchange: ServerWebExchange
     ): Mono<ApiResponse<String>> {
         return fileService.saveFiles(
             filePartFlux = filePartFlux,
             folderId = folderId,
-            userId = 1
+            userId = exchange.attributes["userId"] as Int
         ).map {
             ApiResponse(200, "上传完成", it)
         }
@@ -57,11 +60,16 @@ class FileController(
     fun downloadFile(
         @PathVariable id: Long,
         @RequestParam(defaultValue = "false") preview: Boolean,
-        @RequestHeader(value = "Range", required = false) rangeHeader: String?
+        @RequestHeader(value = "Range", required = false) rangeHeader: String?,
+        exchange: ServerWebExchange
     ): Mono<ResponseEntity<out Resource>> {
+        val requestUserId = exchange.attributes["userId"] as Int
         return fileService.getFileById(id)
             .switchIfEmpty(Mono.error(FileNotFoundInDatabaseException()))
             .flatMap { dataFile ->
+                if (dataFile.userId != requestUserId) {
+                    return@flatMap Mono.error(FileForbiddenException())
+                }
                 val fileUploadName = dataFile.name
                 val fileAbsolutePath = Paths.get(uploadPath, dataFile.pathName.replace("/", File.separator))
                 val storageFile = File(fileAbsolutePath.toString())

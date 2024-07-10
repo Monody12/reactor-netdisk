@@ -6,3 +6,4 @@ class FileNotFoundInFileSystemException(message: String = "文件不存在于文
 class FolderNotFoundException(message: String = "文件夹不存在") : FileException(message) {
     constructor(folderId: Long) : this("文件夹不存在，id: $folderId")
 }
+class FileForbiddenException(message: String = "文件拒绝访问") : FileException(message)

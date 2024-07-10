@@ -1,6 +1,6 @@
 package com.example.reactornetdisk.dto
 
-data class FolderDto(
+data class FolderDTO(
     val name: String,
     val parentId: Long? = null
 )

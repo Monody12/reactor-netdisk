@@ -31,6 +31,7 @@ class GlobalExceptionHandler {
             is FileNotFoundInDatabaseException -> ApiResponse(404, ex.message ?: "", null)
             is FileNotFoundInFileSystemException -> ApiResponse(500, ex.message ?: "", null)
             is FolderNotFoundException -> ApiResponse(404, ex.message ?: "", null)
+            is FileForbiddenException -> ApiResponse(403, ex.message ?: "", null)
             else -> ApiResponse(500, "未定义文件模块错误", ex.localizedMessage)
         }
         return Mono.just(ResponseEntity(response, HttpStatus.OK))

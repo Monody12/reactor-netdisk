@@ -1,6 +1,7 @@
 package com.example.reactornetdisk.controller
 
 import com.example.reactornetdisk.dto.UserDTO
+import com.example.reactornetdisk.dto.UserWithToken
 import com.example.reactornetdisk.entity.ApiResponse
 import com.example.reactornetdisk.entity.User
 import com.example.reactornetdisk.service.UserService
@@ -15,14 +16,14 @@ import reactor.core.publisher.Mono
 class UserController(private val userService: UserService) {
 
     @PostMapping("/login")
-    fun login(@RequestBody userDTO: UserDTO): Mono<ApiResponse<User>> =
+    fun login(@RequestBody userDTO: UserDTO): Mono<ApiResponse<UserWithToken>> =
         userService.login(userDTO)
-            .map { user -> ApiResponse(200, "登录成功", user) }
+            .map { userWithToken -> ApiResponse(200, "登录成功", userWithToken) }
 
 
-    @PostMapping
-    fun createUser(@RequestBody userDTO: UserDTO): Mono<ApiResponse<User>> = userService.createUser(userDTO).map { user ->
-        user.password = ""
-        ApiResponse(200, "用户创建成功", user)
-    }
+//    @PostMapping
+//    fun createUser(@RequestBody userDTO: UserDTO): Mono<ApiResponse<User>> = userService.createUser(userDTO).map { user ->
+//        user.password = ""
+//        ApiResponse(200, "用户创建成功", user)
+//    }
 }
