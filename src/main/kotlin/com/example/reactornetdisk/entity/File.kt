@@ -3,7 +3,7 @@ package com.example.reactornetdisk.entity
 import org.springframework.data.relational.core.mapping.Table
 
 @Table("file")
-class File (
+class File(
     var userId: Int,
     /**
      * 文件夹ID，如果为null则表示在根目录
@@ -14,6 +14,10 @@ class File (
      */
     var name: String,
     /**
+     * 文件描述
+     */
+    var description: String?,
+    /**
      * 文件存储路径
      */
     var pathName: String,
@@ -22,4 +26,4 @@ class File (
      */
     var size: Long,
     var mimeType: String?
-): BaseFile()
+) : BaseFile()

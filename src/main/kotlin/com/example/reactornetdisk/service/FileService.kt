@@ -65,7 +65,8 @@ class FileService(
                                             userId = userId,
                                             folderId = folderId,
                                             size = fileSize,
-                                            mimeType = part.headers().contentType?.toString()
+                                            mimeType = part.headers().contentType?.toString(),
+                                            description = null
                                         )
                                         fileRepository.save(insertFile)
                                     }
