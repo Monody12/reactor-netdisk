@@ -20,6 +20,11 @@ class UserController(private val userService: UserService) {
         userService.login(userDTO)
             .map { userWithToken -> ApiResponse(200, "登录成功", userWithToken) }
 
+    @PostMapping("/refreshToken")
+    fun refreshToken(): Mono<ApiResponse<Void>> {
+        return Mono.just(ApiResponse(200, "刷新成功", null))
+    }
+
 
 //    @PostMapping
 //    fun createUser(@RequestBody userDTO: UserDTO): Mono<ApiResponse<User>> = userService.createUser(userDTO).map { user ->

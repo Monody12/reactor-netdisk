@@ -400,7 +400,7 @@
                 'nickname': undefined
             },
             password: "",
-            image: "http://182.92.224.215:8082/netdisk/upload/guest/%E6%9C%AA%E5%91%BD%E5%90%8D.jpg",
+            image: "https://vps.dluserver.cn:8443/upload/file/哽咽.gif",
             level: "",
             path: "/",
             //文件信息列表
@@ -549,56 +549,78 @@
         },
         created: function () {
             this.tableData = new Array()
-            // 检测是否有cookie，并校验cookie是否有效
-            var cookie = document.cookie
-
-            // 寻找到cookie
-            if (cookie.length > 0) {
-                // 是否找到check字段的cookie
-                var find = false
-                var cookie_arr = cookie.split(";")
-                console.log('用户cookie: ', cookie_arr)
-                for (var i = 0; i < cookie_arr.length; i++) {
-                    var cookie_item = cookie_arr[i].split("=")
-                    // 当存在多个cookie时，切片会导致 'check' 变成' check'
-                    if (cookie_item[0] == "check" || cookie_item[0] == " check") {
-                        find = true
-                        this.token = cookie_item[1]
-                        // 获取到base64加密的校验码，进行解密并向服务器发送验证
-                        var check = window.atob(this.token)
-                        var obj = JSON.parse(check)
-
-                        var params = new URLSearchParams()
-                        params.append('username', obj.username)
-                        params.append('token', obj.uuid)
-                        axios.post('../userservice/login/verify', params).then(res => {
-                            var info = res.data
-                            if (info.code == 200) {
-                                this.username = obj.username
-                                this.token = obj.uuid
-                                console.log('created: function: this.username', this.username)
-                                setTimeout(() => {
-                                    this.getUserInfo()
-                                    this.getInfo()
-                                }, 100)
-                            }
-                            // 验证失败
-                            else {
-                                alert(info.msg)
-                                window.location.href = "./login.html"
-                            }
-                        })
-                        break
-                    }
-                }
-                if (!find) {
-                    // 在多个cookie中找不到check字段的cookie
-                    window.location.href = "./login.html"
-                }
-            } else {
-                // 没有cookie，跳转到登录页面
+            // 从localStorage中查找是否有登录用户信息
+            let userinfo = localStorage.getItem("userinfo")
+            console.log("userinfo", userinfo)
+            // 如果userInfo为null，跳转到登录页
+            if (userinfo == null) {
                 window.location.href = "./login.html"
             }
+            // 设置axios请求头
+            userinfo = JSON.parse(userinfo)
+            axios.defaults.headers.common['Authorization'] = userinfo.token
+            // 尝试请求刷新token，如果失败则跳转到登录页
+            axios.post("./api/user/refreshToken").then(res => {
+                console.log("refresh", res.data)
+                if (res.data.code != 200) {
+                    window.location.href = "./login.html"
+                }
+            }).catch(err => {
+                alert(err)
+            })
+            this.username = userinfo.user.username
+            this.userinfo = userinfo.user
+
+            // 检测是否有cookie，并校验cookie是否有效
+            // var cookie = document.cookie
+
+            // 寻找到cookie
+            // if (cookie.length > 0) {
+            //     // 是否找到check字段的cookie
+            //     var find = false
+            //     var cookie_arr = cookie.split(";")
+            //     console.log('用户cookie: ', cookie_arr)
+            //     for (var i = 0; i < cookie_arr.length; i++) {
+            //         var cookie_item = cookie_arr[i].split("=")
+            //         // 当存在多个cookie时，切片会导致 'check' 变成' check'
+            //         if (cookie_item[0] == "check" || cookie_item[0] == " check") {
+            //             find = true
+            //             this.token = cookie_item[1]
+            //             // 获取到base64加密的校验码，进行解密并向服务器发送验证
+            //             var check = window.atob(this.token)
+            //             var obj = JSON.parse(check)
+            //
+            //             var params = new URLSearchParams()
+            //             params.append('username', obj.username)
+            //             params.append('token', obj.uuid)
+            //             axios.post('../userservice/login/verify', params).then(res => {
+            //                 var info = res.data
+            //                 if (info.code == 200) {
+            //                     this.username = obj.username
+            //                     this.token = obj.uuid
+            //                     console.log('created: function: this.username', this.username)
+            //                     setTimeout(() => {
+            //                         this.getUserInfo()
+            //                         this.getInfo()
+            //                     }, 100)
+            //                 }
+            //                 // 验证失败
+            //                 else {
+            //                     alert(info.msg)
+            //                     window.location.href = "./login.html"
+            //                 }
+            //             })
+            //             break
+            //         }
+            //     }
+            //     if (!find) {
+            //         // 在多个cookie中找不到check字段的cookie
+            //         window.location.href = "./login.html"
+            //     }
+            // } else {
+            //     // 没有cookie，跳转到登录页面
+            //     window.location.href = "./login.html"
+            // }
 
 
             // var Personalize = this.getStorage("Personalize")  //加载用户个性化设置

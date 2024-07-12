@@ -66,7 +66,7 @@
             this.$nextTick(function () {
                     // Code that will run only after the
                     // entire view has been rendered
-                    if (JSON.parse(localStorage.getItem("netdisk_userInfo")) != null) { //如果用户已经登录了
+                    if (JSON.parse(localStorage.getItem("userinfo")) != null) { //如果用户已经登录了
                         window.location.assign("index.html")  //跳转到用户文件页面
                     }
                 }
@@ -92,14 +92,15 @@
                     this.errorInfo = "密码格式错误"
                 else {
                     this.errorInfo = ""
-                    var params = new URLSearchParams();
-                    params.append("username", this.form.username)
-                    params.append("password", this.form.password)
-                    axios.post("./userservice/login/", params).then(res => {
+                    axios.post("./api/user/login", {
+                        username: this.form.username,
+                        password: this.form.password
+                    }).then(res => {
                         console.log("登录信息：", res.data)
                         var info = res.data
                         // 登录成功
                         if (info.code == 200) {
+                            localStorage.setItem("userinfo", JSON.stringify(info.data))
                             window.location.assign("index.html")  //跳转到用户文件页面
                         } else {
                             this.errorInfo = info.msg
