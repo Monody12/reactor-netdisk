@@ -43,6 +43,12 @@ class FileController(
             userId = exchange.attributes["userId"] as Int
         ).map {
             ApiResponse(200, "上传完成", it)
+        }.doOnSuccess { response ->
+            // 在这里进行成功后的操作，但不修改响应
+            println("文件上传成功: $response")
+        }.doOnError { error ->
+            // 在这里处理错误，但不修改响应
+            println("文件上传失败: ${error.message}")
         }
     }
 

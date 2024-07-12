@@ -156,11 +156,11 @@
                     width="55">
             </el-table-column>
 
-            <el-table-column
-                    prop="username"
-                    label="所有者"
-                    width="100">
-            </el-table-column>
+<!--            <el-table-column-->
+<!--                    prop="username"-->
+<!--                    label="所有者"-->
+<!--                    width="100">-->
+<!--            </el-table-column>-->
             <el-table-column
                     prop="name"
                     label="文件名"
@@ -783,44 +783,56 @@
                     }
                 }
                 var that = this
-                axios.all([that.axiosGetFolders(params), that.axiosGetFiles(params)])
-                    .then(axios.spread(function (folders, files) {
-                        that.tableData = new Array()
-                        var tmp = folders.data
-                        if (tmp.code == 200) {
-                            const list = tmp.resData.fileInfo.list
-                            // console.log('tmp.resData.fileInfo.list', list)
-                            for (var index in list) {
-                                list[index]['isfolder'] = true
-                                that.tableData.push(list[index])
-                            }
-                        } else {
-                            console.error(tmp)
-                            that.$message.error('文件夹信息获取失败')
-                        }
-                        tmp = files.data
-                        if (tmp.code == 200) {
-                            const list = tmp.resData.fileInfo.list
-                            // console.log("tmp.resData.fileInfo.list", list)
-                            for (var index in list) {
-                                list[index]['isfolder'] = false
-                                that.tableData.push(list[index])
-                            }
-                        } else {
-                            console.error(tmp)
-                            that.$message.error('文件信息获取失败')
-                        }
-
-                        console.log('文件信息', that.tableData)
-                        // 显示查询到的文件夹数量
-                        that.$message({
-                            message: '查询到' + that.tableData.length + '条文件信息',
-                            type: 'success'
-                        })
-
-                        that.initTable()
-
-                    }))
+                axios.get('./api/folder').then(res=>{
+                    console.log(res.data)
+                    var info = res.data
+                    if (info.code != 200) {
+                        console.error(info)
+                        that.$message.error(info.msg)
+                    } else {
+                        // info = info.resData
+                        // console.log(info)
+                        // that.putFileOnTableData(true, info.folder, info.file)
+                    }
+                })
+                // axios.all([that.axiosGetFolders(params), that.axiosGetFiles(params)])
+                //     .then(axios.spread(function (folders, files) {
+                //         that.tableData = new Array()
+                //         var tmp = folders.data
+                //         if (tmp.code == 200) {
+                //             const list = tmp.resData.fileInfo.list
+                //             // console.log('tmp.resData.fileInfo.list', list)
+                //             for (var index in list) {
+                //                 list[index]['isfolder'] = true
+                //                 that.tableData.push(list[index])
+                //             }
+                //         } else {
+                //             console.error(tmp)
+                //             that.$message.error('文件夹信息获取失败')
+                //         }
+                //         tmp = files.data
+                //         if (tmp.code == 200) {
+                //             const list = tmp.resData.fileInfo.list
+                //             // console.log("tmp.resData.fileInfo.list", list)
+                //             for (var index in list) {
+                //                 list[index]['isfolder'] = false
+                //                 that.tableData.push(list[index])
+                //             }
+                //         } else {
+                //             console.error(tmp)
+                //             that.$message.error('文件信息获取失败')
+                //         }
+                //
+                //         console.log('文件信息', that.tableData)
+                //         // 显示查询到的文件夹数量
+                //         that.$message({
+                //             message: '查询到' + that.tableData.length + '条文件信息',
+                //             type: 'success'
+                //         })
+                //
+                //         that.initTable()
+                //
+                //     }))
                 // 清空列表选中
                 this.$refs.multipleTable.clearSelection()
             },

@@ -17,12 +17,14 @@
     <el-upload
             class="upload-demo"
             drag
-            action="./file/upload"
+            action="./api/upload"
+            :headers="headerObj"
             :data="page_path"
             :on-preview="handlePreview"
             :on-remove="handleRemove"
             :file-list="fileList"
             list-type="picture"
+            name="files"
             multiple>
         <i class="el-icon-upload"></i>
         <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
@@ -44,13 +46,28 @@
             page_path: {
                 username: 'test',
                 path: '/'
+            },
+            headerObj:{
+                Authorization: null
             }
         },
         // 初始化用户信息
         created: function () {
             this.page_path.username = localStorage.getItem("username")
             this.page_path.path = localStorage.getItem("folderPath")
-
+            // 获取登录token
+            let userinfo = localStorage.getItem("userinfo")
+            if (userinfo == null) {
+                this.$message({
+                    type: 'error',
+                    message: '请先登录!'
+                });
+                window.location.href = "login.html"
+            }
+            let token = JSON.parse(userinfo).token
+            console.log("token", token)
+            axios.defaults.headers.common['Authorization'] = token
+            this.headerObj.Authorization = token
         },
         //函数写在这里
         methods: {
