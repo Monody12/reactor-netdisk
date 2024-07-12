@@ -77,4 +77,15 @@ class ReactorNetdiskApplicationTests {
         }
     }
 
+    @Test
+    fun judgeStringEqualsLong() {
+        val fileId : String? = null
+        val dbFileId : Long = 123
+        if (fileId.equals(dbFileId.toString())) {
+            println(true)
+        } else {
+            println(false)
+        }
+    }
+
 }

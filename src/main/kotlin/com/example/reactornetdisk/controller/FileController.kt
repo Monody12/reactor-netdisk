@@ -1,6 +1,7 @@
 package com.example.reactornetdisk.controller
 
 import com.example.reactornetdisk.entity.ApiResponse
+import com.example.reactornetdisk.entity.FileToken
 import com.example.reactornetdisk.exception.FileForbiddenException
 import com.example.reactornetdisk.exception.FileNotFoundInDatabaseException
 import com.example.reactornetdisk.exception.FileNotFoundInFileSystemException
@@ -52,6 +53,19 @@ class FileController(
         }
     }
 
+    /**
+     * 申请文件访问token
+     */
+    @GetMapping("/files/token")
+    fun applyFileToken(
+        @RequestParam fileId: Long,
+        exchange: ServerWebExchange
+    ): Mono<ApiResponse<FileToken>> {
+        val userId = exchange.attributes["userId"] as Int
+        return fileService.applyFileToken(userId, fileId)
+            .map { ApiResponse(200, "文件访问令牌生成成功", it) }
+    }
+
 //    @PostMapping("/upload/test")
 //    fun uploadFilesTest(
 //        @RequestPart("files") filePartFlux: Flux<FilePart>
@@ -62,20 +76,18 @@ class FileController(
 //        }
 //    }
 
-    @GetMapping("/files/{id}/download")
+    @GetMapping("/files/download")
     fun downloadFile(
-        @PathVariable id: Long,
+        @RequestParam fileId: Long,
         @RequestParam(defaultValue = "false") preview: Boolean,
         @RequestHeader(value = "Range", required = false) rangeHeader: String?,
         exchange: ServerWebExchange
     ): Mono<ResponseEntity<out Resource>> {
-        val requestUserId = exchange.attributes["userId"] as Int
-        return fileService.getFileById(id)
+//        val requestUserId = exchange.attributes["userId"] as Int
+//        val requestFileId = exchange.attributes["fileId"] as Long
+        return fileService.getFileById(fileId)
             .switchIfEmpty(Mono.error(FileNotFoundInDatabaseException()))
             .flatMap { dataFile ->
-                if (dataFile.userId != requestUserId) {
-                    return@flatMap Mono.error(FileForbiddenException())
-                }
                 val fileUploadName = dataFile.name
                 val fileAbsolutePath = Paths.get(uploadPath, dataFile.pathName.replace("/", File.separator))
                 val storageFile = File(fileAbsolutePath.toString())

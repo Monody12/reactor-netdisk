@@ -1,8 +1,10 @@
 package com.example.reactornetdisk.service
 
 import com.example.reactornetdisk.entity.File
+import com.example.reactornetdisk.entity.FileToken
 import com.example.reactornetdisk.exception.FolderNotFoundException
 import com.example.reactornetdisk.repository.FileRepository
+import com.example.reactornetdisk.repository.FileTokenRepository
 import com.example.reactornetdisk.repository.FolderRepository
 import com.example.reactornetdisk.util.UploadUtil
 import org.springframework.beans.factory.annotation.Value
@@ -17,6 +19,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 
@@ -24,6 +27,7 @@ import java.util.concurrent.atomic.AtomicLong
 class FileService(
     private val folderRepository: FolderRepository,
     private val fileRepository: FileRepository,
+    private val fileTokenRepository: FileTokenRepository,
     @Value("\${file.upload.path}") private val uploadPath: String
 ) {
     /**
@@ -108,6 +112,14 @@ class FileService(
                 error.printStackTrace()
                 Mono.error(error)
             }
+    }
+
+    fun applyFileToken(userId: Int, fileId: Long): Mono<FileToken> {
+        val fileToken = FileToken(
+            fileId = fileId,
+            token = UUID.randomUUID().toString().replace("-", ""),
+            expireAt = LocalDateTime.now().plusDays(7))
+        return fileTokenRepository.save(fileToken)
     }
 
 }
