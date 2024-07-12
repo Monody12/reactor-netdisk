@@ -21,28 +21,28 @@
     <!--	<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">-->
     <!--	<script src="https://unpkg.com/element-ui/lib/index.js"></script>-->
     <style lang="scss" scoped>
-      * {
-        font-family: "微软雅黑", serif;
-      }
+        * {
+            font-family: "微软雅黑", serif;
+        }
 
-      .table-wrapper {
-        height: calc(100% - 60px);
-      }
+        .table-wrapper {
+            height: calc(100% - 60px);
+        }
 
-      /*
-          用于鼠标点击文件名进行预览
-       */
-      .fileClick {
-        cursor: pointer;
-      }
+        /*
+            用于鼠标点击文件名进行预览
+         */
+        .fileClick {
+            cursor: pointer;
+        }
 
-      .fileClick:hover {
-        color: #1890ff;
-      }
+        .fileClick:hover {
+            color: #1890ff;
+        }
 
-      .fileLinkButton {
-        font-size: 32px;
-      }
+        .fileLinkButton {
+            font-size: 32px;
+        }
     </style>
 </head>
 <body>
@@ -156,11 +156,11 @@
                     width="55">
             </el-table-column>
 
-<!--            <el-table-column-->
-<!--                    prop="username"-->
-<!--                    label="所有者"-->
-<!--                    width="100">-->
-<!--            </el-table-column>-->
+            <!--            <el-table-column-->
+            <!--                    prop="username"-->
+            <!--                    label="所有者"-->
+            <!--                    width="100">-->
+            <!--            </el-table-column>-->
             <el-table-column
                     prop="name"
                     label="文件名"
@@ -559,17 +559,10 @@
             // 设置axios请求头
             userinfo = JSON.parse(userinfo)
             axios.defaults.headers.common['Authorization'] = userinfo.token
-            // 尝试请求刷新token，如果失败则跳转到登录页
-            axios.post("./api/user/refreshToken").then(res => {
-                console.log("refresh", res.data)
-                if (res.data.code != 200) {
-                    window.location.href = "./login.html"
-                }
-            }).catch(err => {
-                alert(err)
-            })
+
             this.username = userinfo.user.username
             this.userinfo = userinfo.user
+
 
             // 检测是否有cookie，并校验cookie是否有效
             // var cookie = document.cookie
@@ -676,6 +669,21 @@
 
                 })
             } else {
+                // 尝试请求刷新token，如果失败则跳转到登录页
+
+                axios.post("./api/user/refreshToken").then(res => {
+                    console.log("refresh", res.data)
+
+                    if (res.data.code == 200) {
+                        this.getInfo()
+                    } else if (res.data.code == 401) {
+                        window.location.href = "./login.html"
+                    } else {
+                        alert(res.data.msg)
+                    }
+                }).catch(err => {
+                    alert(err)
+                })
             }
         },
 
@@ -783,14 +791,14 @@
                     }
                 }
                 var that = this
-                axios.get('./api/folder').then(res=>{
+                axios.get('./api/folder').then(res => {
                     console.log(res.data)
                     var info = res.data
                     if (info.code != 200) {
                         console.error(info)
                         that.$message.error(info.msg)
                     } else {
-                        // info = info.resData
+                        that.tableData = info.data
                         // console.log(info)
                         // that.putFileOnTableData(true, info.folder, info.file)
                     }
@@ -1026,11 +1034,11 @@
                         this.downloadFile(index, row)
                     }, 2000)
                 } else {
-                    window.open('download/' + row.id + '?isDownload=false')
+                    window.open('/api/files/download/' + row.id + '?preview=true')
                 }
             },
             downloadFile(index, row) {
-                window.open('download/' + row.id + '?isDownload=true')
+                window.open('/api/files/download/' + row.id)
             },
             enterFolder(index, row) {
                 console.log('enter folder', row)
