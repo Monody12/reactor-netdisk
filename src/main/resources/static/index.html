@@ -102,18 +102,18 @@
         <el-button @click="fileLink" slot="append" icon="el-icon-link">
             {{ menu_visible.file_menu_word[menu_visible.file_menu].fileLink }}
         </el-button>
-        <el-button v-if="mode == 'owner'" @click="dialogFormVisible4 = true" slot="append" icon="el-icon-s-promotion">
-            {{ menu_visible.file_menu_word[menu_visible.file_menu].share }}
-        </el-button>
+<!--        <el-button v-if="mode == 'owner'" @click="dialogFormVisible4 = true" slot="append" icon="el-icon-s-promotion">-->
+<!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].share }}-->
+<!--        </el-button>-->
         <el-button v-if="mode == 'owner'" @click="newFolder" slot="append" icon="el-icon-folder-add">
             {{ menu_visible.file_menu_word[menu_visible.file_menu].new }}
         </el-button>
         <!--        <el-button v-if="mode == 'owner'" @click="openFolderViewer('copy')" slot="append" icon="el-icon-document-copy">-->
         <!--            {{menu_visible.file_menu_word[menu_visible.file_menu].copy}}-->
         <!--        </el-button>-->
-        <el-button v-if="mode == 'owner'" @click="openFolderViewer('move')" slot="append" icon="el-icon-paperclip">
-            {{ menu_visible.file_menu_word[menu_visible.file_menu].move }}
-        </el-button>
+<!--        <el-button v-if="mode == 'owner'" @click="openFolderViewer('move')" slot="append" icon="el-icon-paperclip">-->
+<!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].move }}-->
+<!--        </el-button>-->
         <el-button v-if="mode == 'owner'" @click="deleteFilesConfirm" slot="append" icon="el-icon-delete">
             {{ menu_visible.file_menu_word[menu_visible.file_menu].delete }}
         </el-button>
@@ -173,13 +173,13 @@
                 </template>
             </el-table-column>
             <el-table-column
-                    prop="type"
+                    prop="mimeType"
                     label="文件类型"
                     sortable
                     width="120">
             </el-table-column>
             <el-table-column
-                    prop="detail"
+                    prop="description"
                     label="文件描述"
                     sortable
                     width="150">
@@ -727,7 +727,7 @@
                     alert('请先登录')
                     return
                 }
-                axios.get('./userinfo/get/full?username=' + username).then(res => {
+                axios.get('/userinfo/get/full?username=' + username).then(res => {
                     var info = res.data
                     console.log('getUserInfo:', info)
                     if (info.code == 200) {
@@ -737,7 +737,7 @@
                     }
                 })
             },
-            getInfo(folderId) {
+            getInfo() {
                 // 处于分享模式下，获取分享文件信息功能失效
                 if (this.mode == 'share') {
                     return
@@ -747,11 +747,13 @@
                 if (stack.length == 0 || stack[stack.length - 1] != this.path)
                     stack.push(this.path)
                 var that = this
+                // 新逻辑
+                var folder_stack = this.folder_stack
                 var requestFolderId = null
-                if (folderId) {
-                    requestFolderId = folderId
+                if (folder_stack.length > 0) {
+                    requestFolderId = folder_stack[folder_stack.length - 1].id
                 }
-                axios.get('./api/folder', {
+                axios.get('/api/folder', {
                     params: {parentId: requestFolderId}
                 }).then(res => {
                     console.log(res.data)
@@ -761,6 +763,7 @@
                         that.$message.error(info.msg)
                     } else {
                         that.tableData = info.data
+                        this.initTable()
                         // console.log(info)
                         // that.putFileOnTableData(true, info.folder, info.file)
                     }
@@ -982,7 +985,7 @@
                     this.folder_stack.push(row) // 新逻辑
                 }
                 if (this.mode == 'owner')
-                    this.getInfo(row.id)  // 传入文件夹id
+                    this.getInfo()
                 // 如果处于分享模式下
                 else {
                     // if (row !== null)
@@ -1015,7 +1018,7 @@
             initTable() {
                 // 格式化日期
                 for (let data of this.tableData) {
-                    data.updateTime = this.dateFormat('YYYY-mm-dd HH:MM', new Date(data.updateTime))
+                    data.updateTime = this.dateFormat('YYYY-mm-dd HH:MM', new Date(data.updatedAt))
                 }
                 // 格式化文件大小
                 for (let data of this.tableData) {
@@ -1027,10 +1030,7 @@
                 }
                 // 添加附加属性
                 for (let data of this.tableData) {
-                    if (data.type == 'folder')
-                        data['isfolder'] = true
-                    else
-                        data['isfolder'] = false
+                    data['isfolder'] = 'parentId' in data;
                 }
             },
 
@@ -1041,62 +1041,75 @@
                 var folderId = new Array()
                 var fileId = new Array()
                 for (const listKey in list) {
-                    if (list[listKey].isfolder)
+                    if ('parentId' in list[listKey])
                         folderId.push(list[listKey].id)
                     else
                         fileId.push(list[listKey].id)
                 }
                 // 显示提交删除文件夹和文件的数量
-                this.$message.info('删除文件夹数量：' + folderId.length + '，删除文件数量：' + fileId.length)
-                // 统计删除文件夹和文件的数量
-                var folderCount = 0, fileCount = 0
+                this.$message.info('提交删除文件夹数量：' + folderId.length + '，删除文件数量：' + fileId.length)
+                axios.delete('/api/folder',{
+                    params:{
+                        folderIdList:folderId,
+                        fileIdList:fileId
+                    }
+                })
+                    .then(res => {
+                        if (res.data.code===200) this.$message.success(res.data.msg)
+                        this.getInfo()
+                    })
+                    .catch(error => {
+                        console.error('Error:', error)
+                    })
                 // 装配参数
-                var folder_params = new URLSearchParams()
-                folder_params.append("username", this.username)
-                for (const folderIdElement of folderId) {
-                    folder_params.append('folderId', folderIdElement)
-                }
-                var file_params = new URLSearchParams()
-                file_params.append("username", this.username)
-                for (const fileIdElement of fileId) {
-                    file_params.append('fileId', fileIdElement)
-                }
+                // 统计删除文件夹和文件的数量
+                // var folderCount = 0, fileCount = 0
+                // var folder_params = new URLSearchParams()
+                // folder_params.append("username", this.username)
+                // for (const folderIdElement of folderId) {
+                //     folder_params.append('folderId', folderIdElement)
+                // }
+                // var file_params = new URLSearchParams()
+                // file_params.append("username", this.username)
+                // for (const fileIdElement of fileId) {
+                //     file_params.append('fileId', fileIdElement)
+                // }
                 // 聚集型批量删除
-                var that = this
-                axios.all([that.axiosDeleteFolder(folder_params), that.axiosDeleteFile(file_params)])
-                    .then(axios.spread(function (folder_info, file_info) {
-                        if (folder_info != null) {
-                            folder_info = folder_info.data
-                            if (folder_info.code == 200) {
-                                folderCount += folder_info.resData.folderCnt
-                                fileCount += folder_info.resData.fileCnt
-                            }
-                        }
-                        if (file_info != null) {
-                            file_info = file_info.data
-                            if (file_info.code == 200) {
-                                fileCount += file_info.resData.fileCnt
-                            }
-                        }
-
-                        // 显示总共删除的文件夹和文件数量
-                        if (folderCount != 0 || fileCount != 0) {
-                            that.$message.success('总共删除文件夹数量：' + folderCount + '，删除文件数量：' + fileCount)
-                            that.getInfo()
-                        }
-                        // 若没有删除任何文件和文件夹，则显示相应的错误信息
-                        else {
-                            if (folderId.length != 0) {
-                                console.error('folder_info', folder_info)
-                                that.$message.error('文件夹删除失败: ' + folder_info.msg)
-                            }
-                            if (fileId.length != 0) {
-                                console.error('file_info', file_info)
-                                that.$message.error('文件删除失败: ' + file_info.msg)
-                            }
-                        }
-
-                    }))
+                // var that = this
+                // axios.all([that.axiosDeleteFolder(folder_params), that.axiosDeleteFile(file_params)])
+                //     .then(axios.spread(function (folder_info, file_info) {
+                //         if (folder_info != null) {
+                //             folder_info = folder_info.data
+                //             if (folder_info.code == 200) {
+                //                 folderCount += folder_info.resData.folderCnt
+                //                 fileCount += folder_info.resData.fileCnt
+                //             }
+                //         }
+                //         if (file_info != null) {
+                //             file_info = file_info.data
+                //             if (file_info.code == 200) {
+                //                 fileCount += file_info.resData.fileCnt
+                //             }
+                //         }
+                //
+                //         // 显示总共删除的文件夹和文件数量
+                //         if (folderCount != 0 || fileCount != 0) {
+                //             that.$message.success('总共删除文件夹数量：' + folderCount + '，删除文件数量：' + fileCount)
+                //             that.getInfo()
+                //         }
+                //         // 若没有删除任何文件和文件夹，则显示相应的错误信息
+                //         else {
+                //             if (folderId.length != 0) {
+                //                 console.error('folder_info', folder_info)
+                //                 that.$message.error('文件夹删除失败: ' + folder_info.msg)
+                //             }
+                //             if (fileId.length != 0) {
+                //                 console.error('file_info', file_info)
+                //                 that.$message.error('文件删除失败: ' + file_info.msg)
+                //             }
+                //         }
+                //
+                //     }))
 
             },
             uploadFile() {
@@ -1293,19 +1306,21 @@
                     this.$message.error('当前已处于根目录')
                     return
                 }
-                var folder = this.folder_stack.pop()
-                this.getInfo(folder.parentId)
+                this.folder_stack.pop()
+                this.getInfo()
 
             },
             // 刷新页面
             refresh() {
-                if (this.mode == 'owner')
+                if (this.mode == 'owner'){
                     this.getInfo()
+                }
                 else
                     this.enterFolder(null, null)
             },
             homePath() {
                 this.path = '/'
+                this.folder_stack = []
                 this.getInfo()
             },
             // 新建文件夹
