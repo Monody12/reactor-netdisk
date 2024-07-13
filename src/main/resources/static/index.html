@@ -1010,6 +1010,15 @@
             },
             // 预览文件
             previewFile(index, row) {
+                axios.get('api/files/token',{
+                    params:{fileId : row.id}
+                }).then(res=>{
+                    console.log(res.data)
+                    if (res.data.code == 200){
+                        window.open(`/api/files/download?fileId=${row.id}&token=${res.data.data.token}&preview=true`)
+                    }
+                })
+                return
                 var type = row.type
                 var name = row.name
                 // 获取文件扩展名
@@ -1034,7 +1043,8 @@
                         this.downloadFile(index, row)
                     }, 2000)
                 } else {
-                    window.open('/api/files/download/' + row.id + '?preview=true')
+
+
                 }
             },
             downloadFile(index, row) {

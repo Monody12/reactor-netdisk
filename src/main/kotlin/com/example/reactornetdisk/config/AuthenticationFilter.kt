@@ -43,10 +43,10 @@ class AuthenticationFilter : WebFilter {
                 .flatMap { fileToken ->
                     if (fileToken.expireAt!! < LocalDateTime.now()) {
                         // Token过期
-                        returnUnauthorized(exchange, "访问文件资源令牌已过期，请文件所有者重新生成")
+                        returnTokenInValid(exchange, "访问文件资源令牌已过期，请文件所有者重新生成")
                     }
                     else if (fileToken.fileId!=fileId?.toLong()) {
-                        returnUnauthorized(exchange, "访问文件资源令牌与文件不匹配")
+                        returnTokenInValid(exchange, "访问文件资源令牌与文件不匹配")
                     }
                     else {
                         chain.filter(exchange)

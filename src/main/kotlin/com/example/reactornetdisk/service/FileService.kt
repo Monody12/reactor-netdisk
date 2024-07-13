@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
+import java.io.FileNotFoundException
 import java.nio.channels.AsynchronousFileChannel
 import java.nio.file.Files
 import java.nio.file.Path
@@ -48,43 +49,43 @@ class FileService(
         } else {
             Mono.just(Unit)
         }).flatMap {
-                filePartFlux
-                    .flatMap { part ->
-                        val filename = part.filename()
-                        val randomName = UUID.randomUUID().toString().replace("-", "")
-                        val destFile = baseDir.resolve(randomName)
+            filePartFlux
+                .flatMap { part ->
+                    val filename = part.filename()
+                    val randomName = UUID.randomUUID().toString().replace("-", "")
+                    val destFile = baseDir.resolve(randomName)
 
-                        Mono.fromCallable {
-                            Files.createDirectories(destFile.parent)
-                            destFile
-                        }.publishOn(Schedulers.boundedElastic())
-                            // 流转换，处理文件写入
-                            .flatMap { file ->
-                                part.transferTo(file)
-                                    .then(Mono.fromCallable { Files.size(file) })
-                                    .flatMap { fileSize ->
-                                        val insertFile = File(
-                                            name = filename,
-                                            pathName = UploadUtil.getDatePath("/", localDate) + "/" + randomName,
-                                            userId = userId,
-                                            folderId = folderId,
-                                            size = fileSize,
-                                            mimeType = part.headers().contentType?.toString(),
-                                            description = null
-                                        )
-                                        fileRepository.save(insertFile)
-                                    }
-                                    .thenReturn("File uploaded successfully: $filename")
-                            }
-                    }
-                    // 流展平，将多个流合并为一个流（上传总结 ）
-                    .collectList().flatMap { results ->
-                        Mono.just("Uploaded ${results.size} files: ${results.joinToString(", ")}")
-                    }.onErrorResume { error ->
-                        error.printStackTrace()
-                        Mono.just("Error uploading files: ${error.message}")
-                    }
-            }
+                    Mono.fromCallable {
+                        Files.createDirectories(destFile.parent)
+                        destFile
+                    }.publishOn(Schedulers.boundedElastic())
+                        // 流转换，处理文件写入
+                        .flatMap { file ->
+                            part.transferTo(file)
+                                .then(Mono.fromCallable { Files.size(file) })
+                                .flatMap { fileSize ->
+                                    val insertFile = File(
+                                        name = filename,
+                                        pathName = UploadUtil.getDatePath("/", localDate) + "/" + randomName,
+                                        userId = userId,
+                                        folderId = folderId,
+                                        size = fileSize,
+                                        mimeType = part.headers().contentType?.toString(),
+                                        description = null
+                                    )
+                                    fileRepository.save(insertFile)
+                                }
+                                .thenReturn("File uploaded successfully: $filename")
+                        }
+                }
+                // 流展平，将多个流合并为一个流（上传总结 ）
+                .collectList().flatMap { results ->
+                    Mono.just("Uploaded ${results.size} files: ${results.joinToString(", ")}")
+                }.onErrorResume { error ->
+                    error.printStackTrace()
+                    Mono.just("Error uploading files: ${error.message}")
+                }
+        }
     }
 
     /**
@@ -115,11 +116,21 @@ class FileService(
     }
 
     fun applyFileToken(userId: Int, fileId: Long): Mono<FileToken> {
-        val fileToken = FileToken(
-            fileId = fileId,
-            token = UUID.randomUUID().toString().replace("-", ""),
-            expireAt = LocalDateTime.now().plusDays(7))
-        return fileTokenRepository.save(fileToken)
+        // 用户申请文件访问token，要校验文件所有者
+        return fileRepository.findById(fileId)
+            .flatMap { fileInfo ->
+                if (fileInfo.userId != userId) {
+                    Mono.error(FileNotFoundException())
+                } else {
+                    val fileToken = FileToken(
+                        fileId = fileId,
+                        token = UUID.randomUUID().toString().replace("-", ""),
+                        expireAt = LocalDateTime.now().plusDays(7)
+                    )
+                    fileTokenRepository.save(fileToken)
+                }
+            }
+
     }
 
 }
