@@ -2,6 +2,8 @@ package com.example.reactornetdisk.config
 
 import com.example.reactornetdisk.entity.ApiResponse
 import com.example.reactornetdisk.entity.UserToken
+import com.example.reactornetdisk.exception.TokenException
+import com.example.reactornetdisk.exception.TokenNotFoundException
 import com.example.reactornetdisk.repository.FileTokenRepository
 import com.example.reactornetdisk.repository.UserTokenRepository
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -40,25 +42,28 @@ class AuthenticationFilter : WebFilter {
                 return returnTokenInValid(exchange, "访问文件资源令牌不存在")
             }
             return fileTokenRepository.findByToken(token)
+                .switchIfEmpty(Mono.error(TokenNotFoundException("访问文件资源令牌无效")))
+//                .switchIfEmpty { Mono.defer { returnTokenInValid(exchange, "访问文件资源令牌无效") } }
                 .flatMap { fileToken ->
                     if (fileToken.expireAt!! < LocalDateTime.now()) {
                         // Token过期
                         returnTokenInValid(exchange, "访问文件资源令牌已过期，请文件所有者重新生成")
-                    }
-                    else if (fileToken.fileId!=fileId?.toLong()) {
+                    } else if (fileToken.fileId != fileId?.toLong()) {
                         returnTokenInValid(exchange, "访问文件资源令牌与文件不匹配")
-                    }
-                    else {
+                    } else {
                         chain.filter(exchange)
                     }
                 }
-                .switchIfEmpty { Mono.defer { returnTokenInValid(exchange, "访问文件资源令牌无效") } }
+
         }
 
         val token = exchange.request.headers.getFirst("Authorization")
 
         return if (token != null) {
             userTokenRepository.findByToken(token)
+                .switchIfEmpty {
+                    Mono.error(TokenNotFoundException("token无效，请重新登录"))
+                }
                 .flatMap { userToken ->
                     if (userToken.expireAt!! < LocalDateTime.now()) {
                         // Token过期
@@ -67,15 +72,13 @@ class AuthenticationFilter : WebFilter {
                         userTokenRepository.updateExpireAtByToken(
                             token = userToken.token!!,
                             expireAt = LocalDateTime.now().plusDays(7)
-                        )
-                            .flatMap {
-                                exchange.attributes["userId"] = userToken.userId
-                                chain.filter(exchange)
-                            }
+                        ).flatMap {
+                            exchange.attributes["userId"] = userToken.userId
+                            chain.filter(exchange)
+                        }
                     }
                 }
-                // 忽略这个警告，代码可以正常执行
-                .switchIfEmpty(Mono.defer { returnUnauthorized(exchange, "token无效，请重新登录") })
+
         } else {
             // 未携带token
             returnUnauthorized(exchange, "请登录后操作")

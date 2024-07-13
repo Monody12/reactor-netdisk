@@ -17,12 +17,15 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.kotlin.core.publisher.switchIfEmpty
 import reactor.kotlin.core.publisher.toMono
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.IOException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.nio.file.Paths
+import java.util.Stack
 
 
 @RequestMapping("/api")
@@ -61,8 +64,13 @@ class FileController(
         @RequestParam fileId: Long,
         exchange: ServerWebExchange
     ): Mono<ApiResponse<FileToken>> {
+        val stack:Stack<Int> = Stack()
+        stack.peek()
         val userId = exchange.attributes["userId"] as Int
         return fileService.applyFileToken(userId, fileId)
+            .switchIfEmpty {
+                Mono.error(FileNotFoundInDatabaseException())
+            }
             .map { ApiResponse(200, "文件访问令牌生成成功", it) }
     }
 

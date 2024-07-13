@@ -13,7 +13,7 @@
 
     <title>我的个人网盘</title>
     <link rel="icon" href="img/favicon.ico">
-    <script src="js/axios.min.js" type="text/javascript"></script>
+    <script src="js/axios.js" type="text/javascript"></script>
     <link rel="stylesheet" type="text/css" href="css/index.css"/>
     <script src="js/vue.js" type="text/javascript" charset="utf-8"></script>
     <script src="js/index.js" type="text/javascript"></script>
@@ -385,6 +385,29 @@
 </body>
 <script>
 
+    // 添加响应拦截器
+    axios.interceptors.response.use(
+        response => {
+            if (response.data.code != 200) {
+                alert(response.data.msg)
+            }
+            return response;
+        },
+        error => {
+            // 对响应错误做点什么
+            if (error.response && error.response.status === 403) {
+                // 如果状态码是 403,跳转到 login.html
+                localStorage.removeItem("userinfo")
+                window.location.href = './login.html';
+            }
+            // 如果响应结果非200，给出alert提示
+            else if (error.response && error.response.status !== 200){
+                alert(error.response.data.message)
+            }
+            return Promise.reject(error);
+        }
+    );
+
     new Vue({
         //作用域
         el: '#app',
@@ -475,7 +498,8 @@
                 day: null
             },
             path_stack: [],
-            folderId_stack: [],
+            folder_stack: [],  // 当前目录
+            folderId_stack: [],  // 分享模式使用
             copyValue: undefined, // 复制到剪切板用的变量
             // 可直接预览的文件类型
             previewable: [
@@ -563,64 +587,11 @@
             this.username = userinfo.user.username
             this.userinfo = userinfo.user
 
-
-            // 检测是否有cookie，并校验cookie是否有效
-            // var cookie = document.cookie
-
-            // 寻找到cookie
-            // if (cookie.length > 0) {
-            //     // 是否找到check字段的cookie
-            //     var find = false
-            //     var cookie_arr = cookie.split(";")
-            //     console.log('用户cookie: ', cookie_arr)
-            //     for (var i = 0; i < cookie_arr.length; i++) {
-            //         var cookie_item = cookie_arr[i].split("=")
-            //         // 当存在多个cookie时，切片会导致 'check' 变成' check'
-            //         if (cookie_item[0] == "check" || cookie_item[0] == " check") {
-            //             find = true
-            //             this.token = cookie_item[1]
-            //             // 获取到base64加密的校验码，进行解密并向服务器发送验证
-            //             var check = window.atob(this.token)
-            //             var obj = JSON.parse(check)
-            //
-            //             var params = new URLSearchParams()
-            //             params.append('username', obj.username)
-            //             params.append('token', obj.uuid)
-            //             axios.post('../userservice/login/verify', params).then(res => {
-            //                 var info = res.data
-            //                 if (info.code == 200) {
-            //                     this.username = obj.username
-            //                     this.token = obj.uuid
-            //                     console.log('created: function: this.username', this.username)
-            //                     setTimeout(() => {
-            //                         this.getUserInfo()
-            //                         this.getInfo()
-            //                     }, 100)
-            //                 }
-            //                 // 验证失败
-            //                 else {
-            //                     alert(info.msg)
-            //                     window.location.href = "./login.html"
-            //                 }
-            //             })
-            //             break
-            //         }
-            //     }
-            //     if (!find) {
-            //         // 在多个cookie中找不到check字段的cookie
-            //         window.location.href = "./login.html"
-            //     }
-            // } else {
-            //     // 没有cookie，跳转到登录页面
-            //     window.location.href = "./login.html"
-            // }
-
-
             // var Personalize = this.getStorage("Personalize")  //加载用户个性化设置
             // if (Personalize != null)
             // 	this.Personalize = Personalize
         },
-        mounted: function () {  //vue中的一个钩子函数，一般在初始化页面完成后，再对dom节点进行相关操作。
+        mounted: function () {
             // 调整页面高度
             this.fetTableHeight()
             var share_id = this.getQueryString('share_id')
@@ -695,12 +666,6 @@
             getStorage(key) {
                 return JSON.parse(localStorage.getItem(key))
             },
-            axiosGetFolders(params) {
-                return axios.get("./folder/queryByPath", params)
-            },
-            axiosGetFiles(params) {
-                return axios.get("./file/findByPath", params)
-            },
             axiosMoveFolder() {
                 var params = new URLSearchParams()
                 params.append('username', this.username)
@@ -772,8 +737,7 @@
                     }
                 })
             },
-            getInfo() {
-
+            getInfo(folderId) {
                 // 处于分享模式下，获取分享文件信息功能失效
                 if (this.mode == 'share') {
                     return
@@ -782,16 +746,14 @@
                 // 如果栈为空，或者入栈地址与当前地址不相同 则将该地址放入栈中
                 if (stack.length == 0 || stack[stack.length - 1] != this.path)
                     stack.push(this.path)
-                var params = {
-                    params: { //请求参数
-                        'username': this.username,
-                        'page': 0,
-                        'size': 99,
-                        'path': this.path
-                    }
-                }
                 var that = this
-                axios.get('./api/folder').then(res => {
+                var requestFolderId = null
+                if (folderId) {
+                    requestFolderId = folderId
+                }
+                axios.get('./api/folder',{
+                    params:{ parentId : requestFolderId }
+                }).then(res => {
                     console.log(res.data)
                     var info = res.data
                     if (info.code != 200) {
@@ -803,44 +765,6 @@
                         // that.putFileOnTableData(true, info.folder, info.file)
                     }
                 })
-                // axios.all([that.axiosGetFolders(params), that.axiosGetFiles(params)])
-                //     .then(axios.spread(function (folders, files) {
-                //         that.tableData = new Array()
-                //         var tmp = folders.data
-                //         if (tmp.code == 200) {
-                //             const list = tmp.resData.fileInfo.list
-                //             // console.log('tmp.resData.fileInfo.list', list)
-                //             for (var index in list) {
-                //                 list[index]['isfolder'] = true
-                //                 that.tableData.push(list[index])
-                //             }
-                //         } else {
-                //             console.error(tmp)
-                //             that.$message.error('文件夹信息获取失败')
-                //         }
-                //         tmp = files.data
-                //         if (tmp.code == 200) {
-                //             const list = tmp.resData.fileInfo.list
-                //             // console.log("tmp.resData.fileInfo.list", list)
-                //             for (var index in list) {
-                //                 list[index]['isfolder'] = false
-                //                 that.tableData.push(list[index])
-                //             }
-                //         } else {
-                //             console.error(tmp)
-                //             that.$message.error('文件信息获取失败')
-                //         }
-                //
-                //         console.log('文件信息', that.tableData)
-                //         // 显示查询到的文件夹数量
-                //         that.$message({
-                //             message: '查询到' + that.tableData.length + '条文件信息',
-                //             type: 'success'
-                //         })
-                //
-                //         that.initTable()
-                //
-                //     }))
                 // 清空列表选中
                 this.$refs.multipleTable.clearSelection()
             },
@@ -893,7 +817,8 @@
             // 预览文件或进入文件夹
             openFile(row) {
                 console.log(row)
-                if (row.isfolder) {
+                // 该对象符合文件夹的特征，进入文件夹
+                if ('parentId' in row) {
                     this.enterFolder(null, row)
                 } else {
                     this.previewFile(null, row)
@@ -1052,26 +977,28 @@
             },
             enterFolder(index, row) {
                 console.log('enter folder', row)
-                if (row != null)
+                if (row != null) {
                     this.path += row.name + '/'
+                    this.folder_stack.push(row) // 新逻辑
+                }
                 if (this.mode == 'owner')
-                    this.getInfo()
+                    this.getInfo(row.id)  // 传入文件夹id
                 // 如果处于分享模式下
                 else {
-                    if (row !== null)
-                        this.folderId_stack.push(row.id)
-                    var stack = this.folderId_stack
-                    var parentFolderId = null
-                    // 如果当前处于根目录，那么
-                    if (stack.length === 1) {
-                        parentFolderId = null
-                    } else {
-                        parentFolderId = stack[0]
-                    }
-                    if (this.path !== '/')
-                        this.guestGetFolder(stack[stack.length - 1], parentFolderId)
-                    else
-                        this.guestGetRoot(this.url, this.code)
+                    // if (row !== null)
+                    //     this.folderId_stack.push(row.id)
+                    // var stack = this.folderId_stack
+                    // var parentFolderId = null
+                    // // 如果当前处于根目录，那么
+                    // if (stack.length === 1) {
+                    //     parentFolderId = null
+                    // } else {
+                    //     parentFolderId = stack[0]
+                    // }
+                    // if (this.path !== '/')
+                    //     this.guestGetFolder(stack[stack.length - 1], parentFolderId)
+                    // else
+                    //     this.guestGetRoot(this.url, this.code)
                 }
             },
             editPersonalize(flag) {
@@ -1297,20 +1224,14 @@
                 // this.path_stack = []
                 // this.getInfo()
             },
-            checkPassword(s) {
-                var pattern = /^[A-Za-z0-9]{4,18}$/
-                return pattern.test(s)
-            },
-            checkNickname(s) {
-                var pattern = /^[\u4E00-\u9FA5A-Za-z0-9]{1,15}$/
-                return pattern.test(s)
-            },
             editUserInfo() {
                 this.form3.nickname = this.nickname
                 this.dialogFormVisible2 = true
             },
             // 返回上次进入的目录
             backPath() {
+                this.upPath()
+                return;
                 if (this.mode == 'share') {
                     this.upPath()
                     return
@@ -1368,7 +1289,12 @@
                     this.enterFolder(null, null)
                     return
                 }
-                this.getInfo()
+                if (this.folder_stack.length === 0) {
+                    this.$message.error('当前已处于根目录')
+                    return
+                }
+                var folder = this.folder_stack.pop()
+                this.getInfo(folder.parentId)
 
             },
             // 刷新页面
@@ -1390,11 +1316,14 @@
                     inputPattern: /^[^\/\\:?*'"^<>\[\]$#]*$/,
                     inputErrorMessage: '文件夹名称格式不正确'
                 }).then(({value}) => {
-                    var params = new URLSearchParams()
-                    params.append("username", this.username)
-                    params.append("path", this.path)
-                    params.append("name", value)
-                    axios.post('./folder/create', params).then(res => {
+                    var parentId = null
+                    if (this.folderId_stack.length!==0){
+                        parentId = this.folderId_stack[this.folderId_stack.length-1]
+                    }
+                    axios.post('/api/folder', {
+                        "name":value,
+                        "parentId":parentId
+                    }).then(res => {
                         var data = res.data
                         if (data.code === 200) {
                             this.$message({
