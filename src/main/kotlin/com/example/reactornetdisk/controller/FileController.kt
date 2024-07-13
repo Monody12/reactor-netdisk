@@ -64,8 +64,6 @@ class FileController(
         @RequestParam fileId: Long,
         exchange: ServerWebExchange
     ): Mono<ApiResponse<FileToken>> {
-        val stack:Stack<Int> = Stack()
-        stack.peek()
         val userId = exchange.attributes["userId"] as Int
         return fileService.applyFileToken(userId, fileId)
             .switchIfEmpty {
