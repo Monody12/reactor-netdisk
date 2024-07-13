@@ -401,7 +401,7 @@
                 window.location.href = './login.html';
             }
             // 如果响应结果非200，给出alert提示
-            else if (error.response && error.response.status !== 200){
+            else if (error.response && error.response.status !== 200) {
                 alert(error.response.data.message)
             }
             return Promise.reject(error);
@@ -751,8 +751,8 @@
                 if (folderId) {
                     requestFolderId = folderId
                 }
-                axios.get('./api/folder',{
-                    params:{ parentId : requestFolderId }
+                axios.get('./api/folder', {
+                    params: {parentId: requestFolderId}
                 }).then(res => {
                     console.log(res.data)
                     var info = res.data
@@ -935,11 +935,11 @@
             },
             // 预览文件
             previewFile(index, row) {
-                axios.get('api/files/token',{
-                    params:{fileId : row.id}
-                }).then(res=>{
+                axios.get('api/files/token', {
+                    params: {fileId: row.id}
+                }).then(res => {
                     console.log(res.data)
-                    if (res.data.code == 200){
+                    if (res.data.code == 200) {
                         window.open(`/api/files/download?fileId=${row.id}&token=${res.data.data.token}&preview=true`)
                     }
                 })
@@ -1317,12 +1317,12 @@
                     inputErrorMessage: '文件夹名称格式不正确'
                 }).then(({value}) => {
                     var parentId = null
-                    if (this.folderId_stack.length!==0){
-                        parentId = this.folderId_stack[this.folderId_stack.length-1]
+                    if (this.folder_stack.length > 0) {
+                        parentId = this.folder_stack[this.folder_stack.length-1].id
                     }
                     axios.post('/api/folder', {
-                        "name":value,
-                        "parentId":parentId
+                        "name": value,
+                        "parentId": parentId
                     }).then(res => {
                         var data = res.data
                         if (data.code === 200) {
