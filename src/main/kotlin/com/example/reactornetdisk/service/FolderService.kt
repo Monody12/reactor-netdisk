@@ -3,6 +3,7 @@ package com.example.reactornetdisk.service
 import com.example.reactornetdisk.entity.BaseFile
 import com.example.reactornetdisk.entity.File
 import com.example.reactornetdisk.entity.Folder
+import com.example.reactornetdisk.exception.FolderNotFoundException
 import com.example.reactornetdisk.repository.FileRepository
 import com.example.reactornetdisk.repository.FolderRepository
 import com.example.reactornetdisk.util.UploadUtil
@@ -65,7 +66,7 @@ class FolderService(
             .flatMap { folder ->
                 findFolderIdRecursively(userId, folder.id, folderNames.drop(1))
             }
-            .switchIfEmpty(Mono.error(NoSuchElementException("Folder not found: $currentFolderName")))
+            .switchIfEmpty(Mono.error(FolderNotFoundException("文件夹不存在: $currentFolderName")))
     }
 
     /**

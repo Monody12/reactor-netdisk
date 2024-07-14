@@ -26,8 +26,8 @@ class GlobalErrorWebExceptionHandler : ErrorWebExceptionHandler {
                 response.statusCode = HttpStatus.BAD_REQUEST
             }
             is TokenNotFoundException -> {
-                apiResponse = ApiResponse(403, ex.message ?: "令牌不存在", null)
-                response.statusCode = HttpStatus.FORBIDDEN
+                apiResponse = ApiResponse(401, ex.message ?: "令牌不存在", null)
+                response.statusCode = HttpStatus.UNAUTHORIZED
             }
             else -> {
                 apiResponse = ApiResponse(500, "服务器错误", ex.localizedMessage)

@@ -121,7 +121,7 @@ class AuthenticationFilter : WebFilter {
         response.statusCode = HttpStatus.FORBIDDEN
         response.headers.contentType = MediaType.APPLICATION_JSON
 
-        val apiResponse = ApiResponse(403, msg, null)
+        val apiResponse = ApiResponse(401, msg, null)
         val responseBody = ObjectMapper().writeValueAsString(apiResponse)
 
         return response.writeWith(Mono.just(response.bufferFactory().wrap(responseBody.toByteArray())))

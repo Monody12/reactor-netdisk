@@ -400,8 +400,8 @@
         },
         error => {
             // 对响应错误做点什么
-            if (error.response && error.response.status === 403) {
-                // 如果状态码是 403,跳转到 login.html
+            if (error.response && error.response.status === 401) {
+                // 如果状态码是 401,跳转到 login.html
                 localStorage.removeItem("userinfo")
                 window.location.href = './login.html';
             }
@@ -1141,7 +1141,7 @@
                     return (n / 1073741824).toFixed(1) + " GB"
             },
             logout() {
-                localStorage.removeItem("userInfo");  //清除登录缓存
+                localStorage.removeItem("userinfo");  //清除登录缓存
                 window.location.assign("login.html")  //跳转到登录页面
             },
             deleteFilesConfirm() {
