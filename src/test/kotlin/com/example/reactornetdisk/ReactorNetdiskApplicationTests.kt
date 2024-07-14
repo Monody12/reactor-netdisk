@@ -87,13 +87,5 @@ class ReactorNetdiskApplicationTests {
             println(false)
         }
     }
-
-    @Test
-    fun getPublicFile(){
-        fileRepository.findByUserIdAndFolderIdAndPublicFlagOrPublicFlagIsNull(
-            userId = 3,
-            folderId = 10000000013,
-            publicFlag = null
-        ).collectList().block()?.forEach { println(it) }
-    }
+    
 }
