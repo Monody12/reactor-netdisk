@@ -4,10 +4,12 @@ import com.example.reactornetdisk.dto.FolderDTO
 import com.example.reactornetdisk.entity.ApiResponse
 import com.example.reactornetdisk.entity.BaseFile
 import com.example.reactornetdisk.entity.Folder
+import com.example.reactornetdisk.exception.FileNotFoundInDatabaseException
 import com.example.reactornetdisk.service.FolderService
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
+import reactor.kotlin.core.publisher.switchIfEmpty
 
 @RestController
 @RequestMapping("/api/folder")
@@ -31,16 +33,33 @@ class FolderController(
 
     /**
      * 获取指定文件夹中的文件和文件夹
+     * 父文件夹id与路径字符串二选一，如果都不传则访问根目录
      */
     @GetMapping
     fun getFilesAndFolders(
         @RequestParam(required = false) parentId: Long?,
+        @RequestParam(required = false) folderPath: String?,
         @RequestParam(required = false, defaultValue = "false") publicFlag: Boolean,
         exchange: ServerWebExchange
     ): Mono<ApiResponse<List<BaseFile>>> {
-        return folderService.getFilesAndFolders(exchange.attributes["userId"] as Int, parentId, publicFlag)
-            .collectList()
-            .map { files -> ApiResponse(code = 200, msg = "查询成功", data = files) }
+        val userId = exchange.attributes["userId"] as Int
+        if (folderPath == null) {
+            return folderService.getFilesAndFolders(userId, parentId, publicFlag)
+                .collectList()
+                .map { files -> ApiResponse(code = 200, msg = "查询成功", data = files) }
+        }
+        if (folderPath.trim().split("/").none { it.isNotBlank() }){
+            return folderService.getFilesAndFolders(userId, null, publicFlag)
+                .collectList()
+                .map { files -> ApiResponse(code = 200, msg = "null", data = files) }
+        }
+        return folderService.getFolderIdFromPath(userId = userId, path = folderPath)
+            .switchIfEmpty { Mono.error(FileNotFoundInDatabaseException()) }
+            .flatMap { folderId ->
+                folderService.getFilesAndFolders(userId, folderId, publicFlag)
+                    .collectList()
+                    .map { files -> ApiResponse(code = 200, msg = folderId.toString(), data = files) }
+            }
     }
 
     /**

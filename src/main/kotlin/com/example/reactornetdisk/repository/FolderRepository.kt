@@ -11,4 +11,5 @@ interface FolderRepository: ReactiveCrudRepository<Folder, Long> {
     fun findByUserIdAndParentId(userId: Int, parentId: Long?): Flux<Folder>
     fun deleteFolderByIdAndUserId(id: Long, userId: Int): Flux<Folder>
     fun deleteByIdAndUserId(id: Long, userId: Int): Mono<Boolean>
+    fun findByUserIdAndParentIdAndName(userId: Int, parentId: Long?, currentFolderName: String): Mono<Folder>
 }

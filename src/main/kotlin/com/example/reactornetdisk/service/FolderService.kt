@@ -42,6 +42,33 @@ class FolderService(
     }
 
     /**
+     * 从路径字符串获取文件夹ID
+     * 例如输入："/测试1/测试2"
+     */
+    fun getFolderIdFromPath(userId: Int, path: String): Mono<Long> {
+        val folderNames = path.trim('/').split('/').filter { it.isNotEmpty() }
+        return if (folderNames.isEmpty()) {
+            Mono.empty()
+        } else {
+            findFolderIdRecursively(userId, null, folderNames)
+        }
+    }
+
+    private fun findFolderIdRecursively(userId: Int, parentId: Long?, folderNames: List<String>): Mono<Long> {
+        if (folderNames.isEmpty()) {
+            return if (parentId == null) { Mono.empty() } else { Mono.just(parentId) }
+        }
+
+        val currentFolderName = folderNames.first()
+
+        return folderRepository.findByUserIdAndParentIdAndName(userId, parentId, currentFolderName)
+            .flatMap { folder ->
+                findFolderIdRecursively(userId, folder.id, folderNames.drop(1))
+            }
+            .switchIfEmpty(Mono.error(NoSuchElementException("Folder not found: $currentFolderName")))
+    }
+
+    /**
      * 获取指定文件夹中的文件和文件夹
      */
     fun getFilesAndFolders(userId: Int, parentId: Long?, publicFlag: Boolean): Flux<BaseFile> {

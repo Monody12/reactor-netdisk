@@ -1,6 +1,7 @@
 package com.example.reactornetdisk
 
 import com.example.reactornetdisk.repository.FileRepository
+import com.example.reactornetdisk.repository.FolderRepository
 import com.example.reactornetdisk.service.FolderService
 import com.example.reactornetdisk.service.UserService
 import com.example.reactornetdisk.util.UploadUtil
@@ -23,6 +24,9 @@ class ReactorNetdiskApplicationTests {
 
     @Autowired
     private lateinit var folderService: FolderService
+
+    @Autowired
+    private lateinit var folderRepository : FolderRepository
 
     @Autowired
     lateinit var userService: UserService
@@ -87,5 +91,10 @@ class ReactorNetdiskApplicationTests {
             println(false)
         }
     }
-    
+
+    @Test
+    fun findFolderByPath() {
+//        val (userId, parentId, currentFolderName) = Triple(1, 1, "新建文件夹")
+//        folderRepository.findByUserIdAndParentIdAndName(userId, parentId, currentFolderName)
+    }
 }
