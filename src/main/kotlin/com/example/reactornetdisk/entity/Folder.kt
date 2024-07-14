@@ -7,4 +7,6 @@ class Folder(
     var userId: Int,
     var parentId: Long?,
     var name: String
-):BaseFile()
+):BaseFile() {
+    constructor() : this(0, null, "")
+}

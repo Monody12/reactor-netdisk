@@ -1,5 +1,6 @@
 package com.example.reactornetdisk.controller
 
+import com.example.reactornetdisk.dto.UploadForm
 import com.example.reactornetdisk.entity.ApiResponse
 import com.example.reactornetdisk.entity.FileToken
 import com.example.reactornetdisk.exception.FileForbiddenException
@@ -38,14 +39,15 @@ class FileController(
     @PostMapping("/upload")
     fun uploadFiles(
         @RequestPart("files") filePartFlux: Flux<FilePart>,
-        @RequestParam(required = false) folderId: Long?,
+        @ModelAttribute uploadForm : UploadForm,
         exchange: ServerWebExchange
-    ): Mono<ApiResponse<String>> {
+    ): Mono<ApiResponse<List<com.example.reactornetdisk.entity.File>>> {
         return fileService.saveFiles(
             filePartFlux = filePartFlux,
-            folderId = folderId,
+            folderId = uploadForm.folderId,
             userId = exchange.attributes["userId"] as Int
-        ).map {
+        ).collectList()
+            .map {
             ApiResponse(200, "上传完成", it)
         }.doOnSuccess { response ->
             // 在这里进行成功后的操作，但不修改响应

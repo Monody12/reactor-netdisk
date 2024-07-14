@@ -45,7 +45,8 @@
             fileList: undefined,
             page_path: {
                 username: 'test',
-                path: '/'
+                path: '/',
+                folderId : null,
             },
             headerObj:{
                 Authorization: null
@@ -55,6 +56,7 @@
         created: function () {
             this.page_path.username = localStorage.getItem("username")
             this.page_path.path = localStorage.getItem("folderPath")
+            this.page_path.folderId = localStorage.getItem("folderId")
             // 获取登录token
             let userinfo = localStorage.getItem("userinfo")
             if (userinfo == null) {
@@ -86,21 +88,20 @@
             },
             handleRemove(file, fileList) {
                 console.log(file, fileList)
-                console.log("选中文件的id为：", file.response.msg)
+                console.log("选中文件的id为：", file.response.data[0].id)
                 this.$confirm('是否同时删除文件？', '提示', {
                     confirmButtonText: '确定',
                     cancelButtonText: '取消',
                     type: 'warning'
                 }).then(() => {
                     var params = new URLSearchParams()
-                    params.append("username", this.page_path.username)
-                    params.append("fileId", file.response.msg)
-                    axios.post('/netdisk/file/delete', params).then(res => {
+                    params.append("fileIdList", file.response.data[0].id)
+                    axios.delete('/api/folder?'+params.toString()).then(res => {
                         var info = res.data.code
                         if (info === 200) {
                             this.$message({
                                 type: 'success',
-                                message: '删除成功!'
+                                message: res.data.msg
                             });
                         } else {
                             this.$message({

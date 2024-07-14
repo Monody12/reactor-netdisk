@@ -2,6 +2,7 @@ package com.example.reactornetdisk.service
 
 import com.example.reactornetdisk.entity.File
 import com.example.reactornetdisk.entity.FileToken
+import com.example.reactornetdisk.entity.Folder
 import com.example.reactornetdisk.exception.FolderNotFoundException
 import com.example.reactornetdisk.repository.FileRepository
 import com.example.reactornetdisk.repository.FileTokenRepository
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
+import reactor.kotlin.core.publisher.toFlux
 import java.io.FileNotFoundException
 import java.nio.channels.AsynchronousFileChannel
 import java.nio.file.Files
@@ -38,55 +40,51 @@ class FileService(
         filePartFlux: Flux<FilePart>,
         folderId: Long? = null,
         userId: Int
-    ): Mono<String> {
+    ): Flux<File> {
         val localDate = LocalDate.now()
         val datePath = UploadUtil.getDatePath(java.io.File.separator, localDate)
         val baseDir = Paths.get(uploadPath, datePath)
-        // 验证文件夹是否存在，不存在则抛出异常（为null表示传根目录不校验）
-        return (if (folderId != null) {
-            folderRepository.findById(folderId)
-                .switchIfEmpty(Mono.error(FolderNotFoundException()))
-        } else {
-            Mono.just(Unit)
-        }).flatMap {
-            filePartFlux
-                .flatMap { part ->
-                    val filename = part.filename()
-                    val randomName = UUID.randomUUID().toString().replace("-", "")
-                    val destFile = baseDir.resolve(randomName)
 
-                    Mono.fromCallable {
-                        Files.createDirectories(destFile.parent)
-                        destFile
-                    }.publishOn(Schedulers.boundedElastic())
-                        // 流转换，处理文件写入
-                        .flatMap { file ->
-                            part.transferTo(file)
-                                .then(Mono.fromCallable { Files.size(file) })
-                                .flatMap { fileSize ->
-                                    val insertFile = File(
-                                        name = filename,
-                                        pathName = UploadUtil.getDatePath("/", localDate) + "/" + randomName,
-                                        userId = userId,
-                                        folderId = folderId,
-                                        size = fileSize,
-                                        mimeType = part.headers().contentType?.toString(),
-                                        description = null
-                                    )
-                                    fileRepository.save(insertFile)
-                                }
-                                .thenReturn("File uploaded successfully: $filename")
-                        }
-                }
-                // 流展平，将多个流合并为一个流（上传总结 ）
-                .collectList().flatMap { results ->
-                    Mono.just("Uploaded ${results.size} files: ${results.joinToString(", ")}")
-                }.onErrorResume { error ->
-                    error.printStackTrace()
-                    Mono.just("Error uploading files: ${error.message}")
-                }
-        }
+        return Mono.justOrEmpty(folderId)
+            .flatMap { id ->
+                folderRepository.findById(id)
+                    .switchIfEmpty(Mono.error(FolderNotFoundException()))
+            }
+            .defaultIfEmpty(Folder()) // 假设 Folder 类有一个无参构造函数
+            .flatMapMany { _ -> filePartFlux }
+            .flatMap { part ->
+                val filename = part.filename()
+                val randomName = UUID.randomUUID().toString().replace("-", "")
+                val destFile = baseDir.resolve(randomName)
+
+                Mono.fromCallable {
+                    Files.createDirectories(destFile.parent)
+                    destFile
+                }.publishOn(Schedulers.boundedElastic())
+                    .flatMap { file ->
+                        part.transferTo(file)
+                            .then(Mono.fromCallable { Files.size(file) })
+                            .flatMap { fileSize ->
+                                val insertFile = File(
+                                    name = filename,
+                                    pathName = UploadUtil.getDatePath("/", localDate) + "/" + randomName,
+                                    userId = userId,
+                                    folderId = folderId,
+                                    size = fileSize,
+                                    mimeType = part.headers().contentType?.toString(),
+                                    description = null
+                                )
+                                fileRepository.save(insertFile)
+                            }
+                    }
+            }
+            .onErrorResume { error ->
+                println("Error uploading files: ${error.message}")
+                error.printStackTrace()
+                Flux.empty()
+            }
     }
+
 
     /**
      * 从数据库中获取文件信息

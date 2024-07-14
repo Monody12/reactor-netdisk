@@ -1022,7 +1022,6 @@
                 }
                 // 格式化文件大小
                 for (let data of this.tableData) {
-                    console.log(data.type != 'folder', data.size)
                     if (data.type != 'folder')
                         data['small'] = data.size <= 51200;
                     if (data.size != undefined)
@@ -1115,6 +1114,8 @@
             uploadFile() {
                 localStorage.setItem("username", this.username)
                 localStorage.setItem("folderPath", this.path)
+                var folderId = this.folder_stack.length > 0 ? this.folder_stack[this.folder_stack.length - 1].id : null
+                localStorage.setItem("folderId", folderId)
                 window.open("upload.html", '_blank', 'width=500px,height=500px')
             },
             formatSize(n) {
