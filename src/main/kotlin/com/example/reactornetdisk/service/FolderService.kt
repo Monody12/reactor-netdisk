@@ -44,11 +44,15 @@ class FolderService(
     /**
      * 获取指定文件夹中的文件和文件夹
      */
-    fun getFilesAndFolders(userId: Int, parentId: Long?): Flux<BaseFile> {
+    fun getFilesAndFolders(userId: Int, parentId: Long?, publicFlag: Boolean): Flux<BaseFile> {
         val folderFlux: Flux<Folder> = folderRepository.findByUserIdAndParentId(userId, parentId)
-        val fileFlux: Flux<File> = fileRepository.findByUserIdAndFolderId(userId, parentId)
+        val fileFlux: Flux<File> = if (publicFlag) {
+            fileRepository.findByUserIdAndFolderIdAndPublicFlagIsTrue(userId, parentId)
+        } else {
+            fileRepository.findByUserIdAndFolderId(userId, parentId)
+        }
         // 将两个 Flux 合并为一个 Flux
-        return Flux.merge(folderFlux, fileFlux)
+        return Flux.concat(folderFlux, fileFlux)
     }
 
 

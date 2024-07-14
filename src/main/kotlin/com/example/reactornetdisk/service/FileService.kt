@@ -39,6 +39,7 @@ class FileService(
     fun saveFiles(
         filePartFlux: Flux<FilePart>,
         folderId: Long? = null,
+        publicFlag: Boolean = false,
         userId: Int
     ): Flux<File> {
         val localDate = LocalDate.now()
@@ -67,6 +68,7 @@ class FileService(
                             .flatMap { fileSize ->
                                 val insertFile = File(
                                     name = filename,
+                                    publicFlag = publicFlag,
                                     pathName = UploadUtil.getDatePath("/", localDate) + "/" + randomName,
                                     userId = userId,
                                     folderId = folderId,

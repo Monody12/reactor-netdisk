@@ -45,6 +45,7 @@ class FileController(
         return fileService.saveFiles(
             filePartFlux = filePartFlux,
             folderId = uploadForm.folderId,
+            publicFlag = uploadForm.publicFlag,
             userId = exchange.attributes["userId"] as Int
         ).collectList()
             .map {

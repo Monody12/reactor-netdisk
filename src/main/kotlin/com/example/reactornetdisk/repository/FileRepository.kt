@@ -5,7 +5,10 @@ import org.springframework.data.repository.reactive.ReactiveCrudRepository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface FileRepository: ReactiveCrudRepository<File, Long> {
+interface FileRepository : ReactiveCrudRepository<File, Long> {
     fun findByUserIdAndFolderId(userId: Int, folderId: Long?): Flux<File>
+    fun findByUserIdAndFolderIdAndPublicFlagIsTrue(userId: Int, folderId: Long?): Flux<File>
     fun deleteByUserIdAndId(userId: Int, id: Long): Mono<Void>
+    fun existsFileByIdAndPublicFlagIsTrue(id: Long): Mono<Boolean>
+
 }

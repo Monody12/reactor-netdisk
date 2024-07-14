@@ -19,7 +19,7 @@
             drag
             action="./api/upload"
             :headers="headerObj"
-            :data="page_path"
+            :data="upload_param"
             :on-preview="handlePreview"
             :on-remove="handleRemove"
             :file-list="fileList"
@@ -28,8 +28,11 @@
             multiple>
         <i class="el-icon-upload"></i>
         <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
-        <div class="el-upload__tip" slot="tip">当前登录用户：{{page_path.username}}</div>
-        <div class="el-upload__tip" slot="tip">上传至文件夹：{{page_path.path}}</div>
+        <div class="el-upload__tip" slot="tip">上传至文件夹：{{upload_param.path}}</div>
+        <div class="el-upload__tip" slot="tip">
+            <label for="publicFlag">公开本次上传文件：</label>
+            <input type="checkbox" id="publicFlag" name="publicFlag" v-model="upload_param.publicFlag" />
+        </div>
     </el-upload>
 </div>
 </body>
@@ -43,10 +46,11 @@
             radio: '1',
             input: undefined,
             fileList: undefined,
-            page_path: {
+            upload_param: {
                 username: 'test',
                 path: '/',
                 folderId : null,
+                publicFlag: false
             },
             headerObj:{
                 Authorization: null
@@ -54,9 +58,9 @@
         },
         // 初始化用户信息
         created: function () {
-            this.page_path.username = localStorage.getItem("username")
-            this.page_path.path = localStorage.getItem("folderPath")
-            this.page_path.folderId = localStorage.getItem("folderId")
+            debugger
+            this.upload_param.path = localStorage.getItem("folderPath")
+            this.upload_param.folderId = localStorage.getItem("folderId")
             // 获取登录token
             let userinfo = localStorage.getItem("userinfo")
             if (userinfo == null) {
@@ -73,15 +77,6 @@
         },
         //函数写在这里
         methods: {
-            f1() {
-                var params = new URLSearchParams()
-                params.append("username", "test")
-                params.append("password", "test")
-                axios.post('http://localhost:10010/userservice/login', params).then(res => {
-                    var info = res.data
-                    console.log(info)
-                })
-            },
             handlePreview(file) {
                 console.log(file)
                 window.open(file.url, '_blank')

@@ -14,6 +14,10 @@ class File(
      */
     var name: String,
     /**
+     * 是否公开
+     */
+    var publicFlag : Boolean,
+    /**
      * 文件描述
      */
     var description: String?,
@@ -26,4 +30,8 @@ class File(
      */
     var size: Long,
     var mimeType: String?
-) : BaseFile()
+) : BaseFile() {
+    override fun toString(): String {
+        return "File(userId=$userId, folderId=$folderId, name='$name', publicFlag=$publicFlag, description=$description, pathName='$pathName', size=$size, mimeType=$mimeType)"
+    }
+}

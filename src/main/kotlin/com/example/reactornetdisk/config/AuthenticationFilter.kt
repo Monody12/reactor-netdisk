@@ -4,6 +4,7 @@ import com.example.reactornetdisk.entity.ApiResponse
 import com.example.reactornetdisk.entity.UserToken
 import com.example.reactornetdisk.exception.TokenException
 import com.example.reactornetdisk.exception.TokenNotFoundException
+import com.example.reactornetdisk.repository.FileRepository
 import com.example.reactornetdisk.repository.FileTokenRepository
 import com.example.reactornetdisk.repository.UserTokenRepository
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -28,6 +29,9 @@ class AuthenticationFilter : WebFilter {
     @Autowired
     lateinit var fileTokenRepository: FileTokenRepository
 
+    @Autowired
+    lateinit var fileRepository: FileRepository
+
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
         // 如果url是登录接口、静态资源，直接放行
         val url = exchange.request.uri.path
@@ -37,24 +41,34 @@ class AuthenticationFilter : WebFilter {
         // 如果访问文件资源，则需要校验token
         if (url.startsWith("/api/files/download")) {
             val token: String? = exchange.request.queryParams.getFirst("token")
-            val fileId: String? = exchange.request.queryParams.getFirst("fileId")
-            if (token == null) {
-                return returnTokenInValid(exchange, "访问文件资源令牌不存在")
+            val fileId: Long
+            try {
+                fileId = exchange.request.queryParams.getFirst("fileId")!!.toLong()
+            }catch (e : Exception) {
+                return returnFileIdInValid(exchange, "访问的文件id不正确")
             }
-            return fileTokenRepository.findByToken(token)
-                .switchIfEmpty(Mono.error(TokenNotFoundException("访问文件资源令牌无效")))
-//                .switchIfEmpty { Mono.defer { returnTokenInValid(exchange, "访问文件资源令牌无效") } }
-                .flatMap { fileToken ->
-                    if (fileToken.expireAt!! < LocalDateTime.now()) {
-                        // Token过期
-                        returnTokenInValid(exchange, "访问文件资源令牌已过期，请文件所有者重新生成")
-                    } else if (fileToken.fileId != fileId?.toLong()) {
-                        returnTokenInValid(exchange, "访问文件资源令牌与文件不匹配")
-                    } else {
-                        chain.filter(exchange)
+            // 检查被访问文件是否是公开的，如果是，立即放行
+            return  fileRepository.existsFileByIdAndPublicFlagIsTrue(fileId).flatMap {
+                if (it) {
+                    chain.filter(exchange)
+                } else {
+                    if (token == null) {
+                        return@flatMap returnTokenInValid(exchange, "访问文件资源令牌不存在")
                     }
+                    fileTokenRepository.findByToken(token)
+                        .switchIfEmpty(Mono.error(TokenNotFoundException("访问文件资源令牌无效")))
+                        .flatMap { fileToken ->
+                            if (fileToken.expireAt!! < LocalDateTime.now()) {
+                                // Token过期
+                                returnTokenInValid(exchange, "访问文件资源令牌已过期，请文件所有者重新生成")
+                            } else if (fileToken.fileId != fileId) {
+                                returnTokenInValid(exchange, "访问文件资源令牌与文件不匹配")
+                            } else {
+                                chain.filter(exchange)
+                            }
+                        }
                 }
-
+            }
         }
 
         val token = exchange.request.headers.getFirst("Authorization")
@@ -108,6 +122,19 @@ class AuthenticationFilter : WebFilter {
         response.headers.contentType = MediaType.APPLICATION_JSON
 
         val apiResponse = ApiResponse(403, msg, null)
+        val responseBody = ObjectMapper().writeValueAsString(apiResponse)
+
+        return response.writeWith(Mono.just(response.bufferFactory().wrap(responseBody.toByteArray())))
+    }
+    /**
+     * 访问文件资源，文件id不正确
+     */
+    private fun returnFileIdInValid(exchange: ServerWebExchange, msg: String): Mono<Void> {
+        val response = exchange.response
+        response.statusCode = HttpStatus.NOT_FOUND
+        response.headers.contentType = MediaType.APPLICATION_JSON
+
+        val apiResponse = ApiResponse(404, msg, null)
         val responseBody = ObjectMapper().writeValueAsString(apiResponse)
 
         return response.writeWith(Mono.just(response.bufferFactory().wrap(responseBody.toByteArray())))

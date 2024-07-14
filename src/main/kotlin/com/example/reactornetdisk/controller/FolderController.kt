@@ -21,12 +21,12 @@ class FolderController(
     fun createFolder(
         @RequestBody folderDto: FolderDTO,
         exchange: ServerWebExchange
-    ) : Mono<ApiResponse<Folder>> {
+    ): Mono<ApiResponse<Folder>> {
         return folderService.createFolder(
             userId = exchange.attributes["userId"] as Int,
             parentId = folderDto.parentId,
             folderName = folderDto.name
-        ).map { ApiResponse(200,"创建成功", it) }
+        ).map { ApiResponse(200, "创建成功", it) }
     }
 
     /**
@@ -35,9 +35,11 @@ class FolderController(
     @GetMapping
     fun getFilesAndFolders(
         @RequestParam(required = false) parentId: Long?,
+        @RequestParam(required = false, defaultValue = "false") publicFlag: Boolean,
         exchange: ServerWebExchange
     ): Mono<ApiResponse<List<BaseFile>>> {
-        return folderService.getFilesAndFolders(exchange.attributes["userId"] as Int, parentId).collectList()
+        return folderService.getFilesAndFolders(exchange.attributes["userId"] as Int, parentId, publicFlag)
+            .collectList()
             .map { files -> ApiResponse(code = 200, msg = "查询成功", data = files) }
     }
 

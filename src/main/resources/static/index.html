@@ -63,8 +63,6 @@
                     <el-dropdown-item command="b">
                         {{ menu_visible.file_menu ? '简略显示文件菜单功能' : '详细显示文件菜单功能' }}
                     </el-dropdown-item>
-                    <el-dropdown-item>螺蛳粉</el-dropdown-item>
-                    <el-dropdown-item>双皮奶</el-dropdown-item>
                     <el-dropdown-item command="logout">退出登录</el-dropdown-item>
                 </el-dropdown-menu>
             </el-dropdown>
@@ -99,9 +97,9 @@
         <el-button @click="batchDownload" slot="append" icon="el-icon-download">
             {{ menu_visible.file_menu_word[menu_visible.file_menu].download }}
         </el-button>
-        <el-button @click="fileLink" slot="append" icon="el-icon-link">
-            {{ menu_visible.file_menu_word[menu_visible.file_menu].fileLink }}
-        </el-button>
+<!--        <el-button @click="fileLink" slot="append" icon="el-icon-link">-->
+<!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].fileLink }}-->
+<!--        </el-button>-->
 <!--        <el-button v-if="mode == 'owner'" @click="dialogFormVisible4 = true" slot="append" icon="el-icon-s-promotion">-->
 <!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].share }}-->
 <!--        </el-button>-->
@@ -123,15 +121,15 @@
         <el-button v-if="mode == 'owner'" @click="homePath" slot="append" icon="el-icon-s-home">
             {{ menu_visible.file_menu_word[menu_visible.file_menu].home }}
         </el-button>
-        <el-button @click="backPath" slot="append" icon="el-icon-back">
-            {{ menu_visible.file_menu_word[menu_visible.file_menu].back }}
-        </el-button>
+<!--        <el-button @click="backPath" slot="append" icon="el-icon-back">-->
+<!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].back }}-->
+<!--        </el-button>-->
         <el-button @click="upPath" slot="append" icon="el-icon-top">
             {{ menu_visible.file_menu_word[menu_visible.file_menu].up }}
         </el-button>
-        <el-button v-if="mode == 'owner'" @click="enterPath" slot="append" icon="el-icon-right">
-            {{ menu_visible.file_menu_word[menu_visible.file_menu].enter }}
-        </el-button>
+<!--        <el-button v-if="mode == 'owner'" @click="enterPath" slot="append" icon="el-icon-right">-->
+<!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].enter }}-->
+<!--        </el-button>-->
     </el-input>
     <div class="table-wrapper" ref="tableWrapper">
         <el-table
@@ -183,6 +181,13 @@
                     label="文件描述"
                     sortable
                     width="150">
+            </el-table-column>
+            <el-table-column
+                    prop="publicFlag"
+                    label="公开状态"
+                    sortable
+                    width="100">
+                <template slot-scope="scope">{{ scope.row.publicFlag ? "公开" : "" }}</template>
             </el-table-column>
             <el-table-column
                     prop="size"
@@ -824,7 +829,7 @@
                 if ('parentId' in row) {
                     this.enterFolder(null, row)
                 } else {
-                    this.previewFile(null, row)
+                    this.previewFile(row)
                 }
             },
             getQueryString(name) {
@@ -846,8 +851,8 @@
                     return
                 }
                 for (let file of list) {
-                    if (!file.isfolder) {
-                        window.open('download/' + file.id + '?isDownload=true', '_blank')
+                    if (!('parentId' in file)) {
+                        this.browseFile(file.id, file.publicFlag, false)
                     } else {
                         setTimeout(() => {
                             this.$message({
@@ -936,44 +941,51 @@
                 this.form2.refObject = row
                 this.form2.small = row.small
             },
-            // 预览文件
-            previewFile(index, row) {
-                axios.get('api/files/token', {
-                    params: {fileId: row.id}
-                }).then(res => {
-                    console.log(res.data)
-                    if (res.data.code == 200) {
-                        window.open(`/api/files/download?fileId=${row.id}&token=${res.data.data.token}&preview=true`)
-                    }
-                })
-                return
-                var type = row.type
-                var name = row.name
-                // 获取文件扩展名
-                var ext = name.substr(name.lastIndexOf('.') + 1).toLowerCase()
-                console.log('文件类型：', type, "文件扩展名：", ext)
-                if (this.previewable_office.includes(ext)) {
-                    // 弹窗询问用户是否使用Google文档打开
-                    this.$confirm('该文档需使用Google文档进行在线预览，需要外网环境', '提示', {
-                        confirmButtonText: '预览',
-                        cancelButtonText: '下载',
-                        type: 'warning'
-                    }).then(() => {
-                        window.open('https://docs.google.com/viewer?url=' + window.origin + "/netdisk/download/" + row.id)
-                    }).catch(() => {
-                        window.open('download/' + row.id + '?isDownload=false')
+            // 访问文件
+            browseFile(id, publicFlag, preview) {
+                if (publicFlag) {
+                    window.open(`/api/files/download?fileId=${id}&preview=${preview}`)
+                } else {
+                    axios.get('api/files/token', {
+                        params: {fileId: id}
+                    }).then(res => {
+                        console.log(res.data)
+                        if (res.data.code == 200) {
+                            window.open(`/api/files/download?fileId=${id}&token=${res.data.data.token}&preview=${preview}`)
+                        }
                     })
                 }
-                // 如果要预览的文件类型不在支持范围内，则转到下载页面
-                else if (!this.previewable.includes(ext) && type != 'code' && type != 'configuration') {
-                    this.$message.error('不支持预览的文件类型，正在跳转到下载页面')
-                    setTimeout(() => {
-                        this.downloadFile(index, row)
-                    }, 2000)
-                } else {
-
-
-                }
+            },
+            // 预览文件
+            previewFile(row) {
+                this.browseFile(row.id, row.publicFlag, true)
+                // var type = row.type
+                // var name = row.name
+                // // 获取文件扩展名
+                // var ext = name.substr(name.lastIndexOf('.') + 1).toLowerCase()
+                // console.log('文件类型：', type, "文件扩展名：", ext)
+                // if (this.previewable_office.includes(ext)) {
+                //     // 弹窗询问用户是否使用Google文档打开
+                //     this.$confirm('该文档需使用Google文档进行在线预览，需要外网环境', '提示', {
+                //         confirmButtonText: '预览',
+                //         cancelButtonText: '下载',
+                //         type: 'warning'
+                //     }).then(() => {
+                //         window.open('https://docs.google.com/viewer?url=' + window.origin + "/netdisk/download/" + row.id)
+                //     }).catch(() => {
+                //         window.open('download/' + row.id + '?isDownload=false')
+                //     })
+                // }
+                // // 如果要预览的文件类型不在支持范围内，则转到下载页面
+                // else if (!this.previewable.includes(ext) && type != 'code' && type != 'configuration') {
+                //     this.$message.error('不支持预览的文件类型，正在跳转到下载页面')
+                //     setTimeout(() => {
+                //         this.downloadFile(index, row)
+                //     }, 2000)
+                // } else {
+                //
+                //
+                // }
             },
             downloadFile(index, row) {
                 window.open('/api/files/download/' + row.id)
