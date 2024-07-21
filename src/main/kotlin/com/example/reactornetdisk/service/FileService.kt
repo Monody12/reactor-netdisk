@@ -15,6 +15,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 import reactor.kotlin.core.publisher.toFlux
+import reactor.kotlin.core.publisher.toMono
 import java.io.FileNotFoundException
 import java.nio.channels.AsynchronousFileChannel
 import java.nio.file.Files
@@ -115,22 +116,20 @@ class FileService(
             }
     }
 
-    fun applyFileToken(userId: Int, fileId: Long): Mono<FileToken> {
+    fun applyFileTokenAndGetDownloadString(userId: Int, fileIdList: List<Long>): Flux<String> {
         // 用户申请文件访问token，要校验文件所有者
-        return fileRepository.findById(fileId)
-            .flatMap { fileInfo ->
-                if (fileInfo.userId != userId) {
-                    Mono.error(FileNotFoundException())
-                } else {
-                    val fileToken = FileToken(
-                        fileId = fileId,
-                        token = UUID.randomUUID().toString().replace("-", ""),
-                        expireAt = LocalDateTime.now().plusDays(7)
-                    )
-                    fileTokenRepository.save(fileToken)
-                }
+        val token :String = UUID.randomUUID().toString().replace("-", "")
+        return fileRepository.findIdByUserIdAndFileIdIn(userId, fileIdList)
+            // 生成FileToken对象
+            .flatMap { filterFileId ->
+                Mono.just(FileToken(fileId = filterFileId, token = token))
             }
-
+            .toFlux()
+            .collectList()
+            .flatMapMany { fileTokenRepository.saveAll(it) }
+            .flatMap { fileToken ->
+                 Mono.just("/api/files/download?fileId=${fileToken.fileId}&token=${fileToken.token}")
+            }
     }
 
 }

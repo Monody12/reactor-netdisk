@@ -3,7 +3,6 @@ package com.example.reactornetdisk.controller
 import com.example.reactornetdisk.dto.UploadForm
 import com.example.reactornetdisk.entity.ApiResponse
 import com.example.reactornetdisk.entity.FileToken
-import com.example.reactornetdisk.exception.FileForbiddenException
 import com.example.reactornetdisk.exception.FileNotFoundInDatabaseException
 import com.example.reactornetdisk.exception.FileNotFoundInFileSystemException
 import com.example.reactornetdisk.service.FileService
@@ -11,22 +10,18 @@ import org.apache.tika.Tika
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
-import org.springframework.core.io.support.ResourceRegion
 import org.springframework.http.*
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import reactor.kotlin.core.publisher.switchIfEmpty
 import reactor.kotlin.core.publisher.toMono
 import java.io.File
-import java.io.FileNotFoundException
 import java.io.IOException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.nio.file.Paths
-import java.util.Stack
 
 
 @RequestMapping("/api")
@@ -60,19 +55,23 @@ class FileController(
     }
 
     /**
-     * 申请文件访问token
+     * 获取文件访问Path（带token）
+     * 例如：/api/files/download?fileId=123&token=xxxxx
+     * 请求协议、hosts、preview由前端拼接
      */
     @GetMapping("/files/token")
-    fun applyFileToken(
-        @RequestParam fileId: Long,
+    fun getDownloadString(
+        @RequestParam fileIdList: List<Long>,
         exchange: ServerWebExchange
-    ): Mono<ApiResponse<FileToken>> {
+    ): Mono<ApiResponse<List<String>>> {
+        if (fileIdList.isEmpty()) {
+            return Mono.just(ApiResponse(400, "请求参数错误，文件id不能为空", null))
+        }
         val userId = exchange.attributes["userId"] as Int
-        return fileService.applyFileToken(userId, fileId)
-            .switchIfEmpty {
-                Mono.error(FileNotFoundInDatabaseException())
+        return fileService.applyFileTokenAndGetDownloadString(userId, fileIdList).collectList()
+            .map {
+                ApiResponse(200, "获取成功", it)
             }
-            .map { ApiResponse(200, "文件访问令牌生成成功", it) }
     }
 
 //    @PostMapping("/upload/test")
