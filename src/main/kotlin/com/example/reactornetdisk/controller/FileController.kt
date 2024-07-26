@@ -68,7 +68,7 @@ class FileController(
             return Mono.just(ApiResponse(400, "请求参数错误，文件id不能为空", null))
         }
         val userId = exchange.attributes["userId"] as Int
-        return fileService.applyFileTokenAndGetDownloadString(userId, fileIdList).collectList()
+        return fileService.applyFileTokenAndGetDownloadString(userId, fileIdList.distinct()).collectList()
             .map {
                 ApiResponse(200, "获取成功", it)
             }

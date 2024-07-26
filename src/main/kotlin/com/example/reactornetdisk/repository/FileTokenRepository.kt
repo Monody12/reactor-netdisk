@@ -5,5 +5,5 @@ import org.springframework.data.repository.reactive.ReactiveCrudRepository
 import reactor.core.publisher.Mono
 
 interface FileTokenRepository : ReactiveCrudRepository<FileToken, Long> {
-    fun findByToken(token: String): Mono<FileToken>
+    fun findByFileIdAndToken(fileId: Long, token:String): Mono<FileToken>
 }

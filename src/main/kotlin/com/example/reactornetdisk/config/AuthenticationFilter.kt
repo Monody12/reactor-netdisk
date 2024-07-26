@@ -55,7 +55,7 @@ class AuthenticationFilter : WebFilter {
                     if (token == null) {
                         return@flatMap returnTokenInValid(exchange, "访问文件资源令牌不存在")
                     }
-                    fileTokenRepository.findByToken(token)
+                    fileTokenRepository.findByFileIdAndToken(fileId, token)
                         .switchIfEmpty(Mono.error(TokenNotFoundException("访问文件资源令牌无效")))
                         .flatMap { fileToken ->
                             if (fileToken.expireAt!! < LocalDateTime.now()) {
