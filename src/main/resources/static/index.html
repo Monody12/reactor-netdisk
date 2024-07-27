@@ -100,18 +100,18 @@
         <el-button @click="fileLink" slot="append" icon="el-icon-link">
             {{ menu_visible.file_menu_word[menu_visible.file_menu].fileLink }}
         </el-button>
-<!--        <el-button v-if="mode == 'owner'" @click="dialogFormVisible4 = true" slot="append" icon="el-icon-s-promotion">-->
-<!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].share }}-->
-<!--        </el-button>-->
+        <!--        <el-button v-if="mode == 'owner'" @click="dialogFormVisible4 = true" slot="append" icon="el-icon-s-promotion">-->
+        <!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].share }}-->
+        <!--        </el-button>-->
         <el-button v-if="mode == 'owner'" @click="newFolder" slot="append" icon="el-icon-folder-add">
             {{ menu_visible.file_menu_word[menu_visible.file_menu].new }}
         </el-button>
         <!--        <el-button v-if="mode == 'owner'" @click="openFolderViewer('copy')" slot="append" icon="el-icon-document-copy">-->
         <!--            {{menu_visible.file_menu_word[menu_visible.file_menu].copy}}-->
         <!--        </el-button>-->
-<!--        <el-button v-if="mode == 'owner'" @click="openFolderViewer('move')" slot="append" icon="el-icon-paperclip">-->
-<!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].move }}-->
-<!--        </el-button>-->
+        <!--        <el-button v-if="mode == 'owner'" @click="openFolderViewer('move')" slot="append" icon="el-icon-paperclip">-->
+        <!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].move }}-->
+        <!--        </el-button>-->
         <el-button v-if="mode == 'owner'" @click="deleteFilesConfirm" slot="append" icon="el-icon-delete">
             {{ menu_visible.file_menu_word[menu_visible.file_menu].delete }}
         </el-button>
@@ -121,15 +121,15 @@
         <el-button v-if="mode == 'owner'" @click="homePath" slot="append" icon="el-icon-s-home">
             {{ menu_visible.file_menu_word[menu_visible.file_menu].home }}
         </el-button>
-<!--        <el-button @click="backPath" slot="append" icon="el-icon-back">-->
-<!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].back }}-->
-<!--        </el-button>-->
+        <!--        <el-button @click="backPath" slot="append" icon="el-icon-back">-->
+        <!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].back }}-->
+        <!--        </el-button>-->
         <el-button @click="upPath" slot="append" icon="el-icon-top">
             {{ menu_visible.file_menu_word[menu_visible.file_menu].up }}
         </el-button>
-<!--        <el-button v-if="mode == 'owner'" @click="enterPath" slot="append" icon="el-icon-right">-->
-<!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].enter }}-->
-<!--        </el-button>-->
+        <!--        <el-button v-if="mode == 'owner'" @click="enterPath" slot="append" icon="el-icon-right">-->
+        <!--            {{ menu_visible.file_menu_word[menu_visible.file_menu].enter }}-->
+        <!--        </el-button>-->
     </el-input>
     <div class="table-wrapper" ref="tableWrapper">
         <el-table
@@ -241,11 +241,18 @@
             <el-form-item label="文件描述" :label-width="formLabelWidth">
                 <el-input v-model="form2.description" autocomplete="off"></el-input>
             </el-form-item>
-<!--            <el-form-item v-if="form2.small" label="在线编辑" :label-width="formLabelWidth">-->
-<!--                <el-button type="primary" @click="openOnlineEditor(form2.id)"-->
-<!--                           plain>打开在线文件编辑器-->
-<!--                </el-button>-->
+            <el-form-item label="可见性" :label-width="formLabelWidth">
+                <el-switch
+                        v-model="form2.publicFlag"
+                        active-color="#ff4949"
+                        inactive-color="#13ce66">
+                </el-switch>
+                <span>{{form2.publicFlag ? "公开，访问文件无需令牌" : "私有，访问文件需要点击文件或生成外链获取临时下载链接"}}</span>
             </el-form-item>
+            <!--            <el-form-item v-if="form2.small" label="在线编辑" :label-width="formLabelWidth">-->
+            <!--                <el-button type="primary" @click="openOnlineEditor(form2.id)"-->
+            <!--                           plain>打开在线文件编辑器-->
+            <!--                </el-button>-->
         </el-form>
         <div slot="footer" class="dialog-footer">
             <el-button @click="dialogFormVisible = false">取 消</el-button>
@@ -386,7 +393,7 @@
         </div>
     </el-dialog>
 
-</div>
+    </div>
 </body>
 <script>
 
@@ -436,7 +443,7 @@
                 id: '文件标识',
                 username: '所有者',
                 name: '文件名',
-                detail: '文件描述',
+                description: '文件描述',
                 size: '文件大小',
                 type: '文件类型',
                 path: '下载链接',
@@ -452,9 +459,10 @@
                 index: 0,
                 id: "",
                 data: [],
-                detail: '文件描述',
+                description: '文件描述',
                 isfolder: false,
                 small: false, // 是否为小文件可以编辑
+                publicFlag: false
             },
             //文件信息编辑窗口
             dialogTableVisible: false,
@@ -895,50 +903,30 @@
             updateFileInfo() {
                 this.dialogFormVisible = false
                 if (this.form2.id !== "") {
-                    //发送axios的post请求
-                    var params = new URLSearchParams();
-                    params.append('id', this.form2.id)
-                    params.append('username', this.username)
-                    params.append('name', this.form2.name)
-                    params.append('detail', this.form2.detail)
-                    var post_url = this.form2.isfolder ? './folder/update' : './file/update'
-                    axios.post(post_url, params).then(res => {
+                    var post_url = this.form2.isfolder ? './api/folder' : './api/file'
+                    axios.put(post_url, this.form2).then(res => {
                         var info = res.data
-                        if (info.code != 200) {
-                            console.error(info)
-                            this.$message.error(info.msg)
-                        } else {
-
-                            info = info.resData
-                            console.log(info)
-                            // 在本地修改文件夹信息
-                            if (this.form2.isfolder) {
-                                this.form2.refObject.detail = this.form2.detail
-                                this.form2.refObject.name = this.form2.name
-                            }
-                            // 在本地修改文件信息
-                            else {
-                                this.form2.refObject.detail = this.form2.detail
-                                this.form2.refObject.name = this.form2.name
-                                this.form2.refObject.type = info.file.type
-                            }
-                            this.$message.success('修改成功')
-                            this.dialogFormVisible = false
-                            // this.getFolder(this.currentFolderId)
+                        console.log(info)
+                        // 在本地修改文件(夹)信息
+                        if (info.code === 200) {
+                            this.form2.refObject.description = this.form2.description
+                            this.form2.refObject.name = this.form2.name
+                            this.form2.refObject.publicFlag = this.form2.publicFlag
                         }
-
+                        this.$message.success('修改成功')
+                        this.dialogFormVisible = false
                     })
                 }
             },
             editFileInfo(index, row) {
                 this.dialogFormVisible = true
-                // console.log(row)
                 this.form2.index = index
                 this.form2.id = row.id
                 this.form2.description = row.description
                 this.form2.name = row.name
                 this.form2.isfolder = 'parentId' in row
                 this.form2.refObject = row
+                this.form2.publicFlag = row.publicFlag
                 // this.form2.small = row.small
             },
             // 访问文件
@@ -1061,14 +1049,14 @@
                 }
                 // 显示提交删除文件夹和文件的数量
                 this.$message.info('提交删除文件夹数量：' + folderId.length + '，删除文件数量：' + fileId.length)
-                axios.delete('/api/folder',{
-                    params:{
-                        folderIdList:folderId,
-                        fileIdList:fileId
+                axios.delete('/api/folder', {
+                    params: {
+                        folderIdList: folderId,
+                        fileIdList: fileId
                     }
                 })
                     .then(res => {
-                        if (res.data.code===200) this.$message.success(res.data.msg)
+                        if (res.data.code === 200) this.$message.success(res.data.msg)
                         this.getInfo()
                     })
                     .catch(error => {
@@ -1327,10 +1315,9 @@
             },
             // 刷新页面
             refresh() {
-                if (this.mode == 'owner'){
+                if (this.mode == 'owner') {
                     this.getInfo()
-                }
-                else
+                } else
                     this.enterFolder(null, null)
             },
             homePath() {
@@ -1348,7 +1335,7 @@
                 }).then(({value}) => {
                     var parentId = null
                     if (this.folder_stack.length > 0) {
-                        parentId = this.folder_stack[this.folder_stack.length-1].id
+                        parentId = this.folder_stack[this.folder_stack.length - 1].id
                     }
                     axios.post('/api/folder', {
                         "name": value,

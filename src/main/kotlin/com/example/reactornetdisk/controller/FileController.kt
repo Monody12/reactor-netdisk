@@ -1,10 +1,12 @@
 package com.example.reactornetdisk.controller
 
+import com.example.reactornetdisk.dto.FileUpdateDto
 import com.example.reactornetdisk.dto.UploadForm
 import com.example.reactornetdisk.entity.ApiResponse
 import com.example.reactornetdisk.entity.FileToken
 import com.example.reactornetdisk.exception.FileNotFoundInDatabaseException
 import com.example.reactornetdisk.exception.FileNotFoundInFileSystemException
+import com.example.reactornetdisk.repository.FileRepository
 import com.example.reactornetdisk.service.FileService
 import org.apache.tika.Tika
 import org.springframework.beans.factory.annotation.Value
@@ -28,13 +30,14 @@ import java.nio.file.Paths
 @RestController
 class FileController(
     private val fileService: FileService,
+    private val fileRepository: FileRepository,
     @Value("\${file.upload.path}") private val uploadPath: String
 ) {
 
     @PostMapping("/upload")
     fun uploadFiles(
         @RequestPart("files") filePartFlux: Flux<FilePart>,
-        @ModelAttribute uploadForm : UploadForm,
+        @ModelAttribute uploadForm: UploadForm,
         exchange: ServerWebExchange
     ): Mono<ApiResponse<List<com.example.reactornetdisk.entity.File>>> {
         return fileService.saveFiles(
@@ -44,14 +47,14 @@ class FileController(
             userId = exchange.attributes["userId"] as Int
         ).collectList()
             .map {
-            ApiResponse(200, "上传完成", it)
-        }.doOnSuccess { response ->
-            // 在这里进行成功后的操作，但不修改响应
-            println("文件上传成功: $response")
-        }.doOnError { error ->
-            // 在这里处理错误，但不修改响应
-            println("文件上传失败: ${error.message}")
-        }
+                ApiResponse(200, "上传完成", it)
+            }.doOnSuccess { response ->
+                // 在这里进行成功后的操作，但不修改响应
+                println("文件上传成功: $response")
+            }.doOnError { error ->
+                // 在这里处理错误，但不修改响应
+                println("文件上传失败: ${error.message}")
+            }
     }
 
     /**
@@ -74,16 +77,6 @@ class FileController(
             }
     }
 
-//    @PostMapping("/upload/test")
-//    fun uploadFilesTest(
-//        @RequestPart("files") filePartFlux: Flux<FilePart>
-//    ):Flux<Any>{
-//        return filePartFlux.flatMap { filePart ->
-//            filePart.transferTo(Paths.get(uploadPath,filePart.filename()))
-//                .then(Mono.just(filePart.filename()))
-//        }
-//    }
-
     @GetMapping("/files/download")
     fun downloadFile(
         @RequestParam fileId: Long,
@@ -91,8 +84,6 @@ class FileController(
         @RequestHeader(value = "Range", required = false) rangeHeader: String?,
         exchange: ServerWebExchange
     ): Mono<ResponseEntity<out Resource>> {
-//        val requestUserId = exchange.attributes["userId"] as Int
-//        val requestFileId = exchange.attributes["fileId"] as Long
         return fileService.getFileById(fileId)
             .switchIfEmpty(Mono.error(FileNotFoundInDatabaseException()))
             .flatMap { dataFile ->
@@ -171,4 +162,21 @@ class FileController(
         }
     }
 
+    @PutMapping("/file")
+    fun updateFile(@RequestBody fileUpdateDto: FileUpdateDto, exchange: ServerWebExchange): Mono<ApiResponse<Nothing>> {
+        val userId = exchange.attributes["userId"] as Int
+        return fileRepository.updateFile(
+            userId = userId,
+            fileId = fileUpdateDto.id,
+            name = fileUpdateDto.name,
+            publicFlag = fileUpdateDto.publicFlag,
+            description = fileUpdateDto.description
+        ).flatMap {
+            if (it == 1) {
+                Mono.just(ApiResponse(200, "更新成功", null))
+            } else {
+                Mono.just(ApiResponse(400, "更新失败", null))
+            }
+        }
+    }
 }

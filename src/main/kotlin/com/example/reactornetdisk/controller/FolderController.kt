@@ -1,10 +1,13 @@
 package com.example.reactornetdisk.controller
 
+import com.example.reactornetdisk.dto.FileUpdateDto
 import com.example.reactornetdisk.dto.FolderDTO
+import com.example.reactornetdisk.dto.FolderUpdateDto
 import com.example.reactornetdisk.entity.ApiResponse
 import com.example.reactornetdisk.entity.BaseFile
 import com.example.reactornetdisk.entity.Folder
 import com.example.reactornetdisk.exception.FileNotFoundInDatabaseException
+import com.example.reactornetdisk.repository.FolderRepository
 import com.example.reactornetdisk.service.FolderService
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ServerWebExchange
@@ -14,7 +17,8 @@ import reactor.kotlin.core.publisher.switchIfEmpty
 @RestController
 @RequestMapping("/api/folder")
 class FolderController(
-    private val folderService: FolderService
+    private val folderService: FolderService,
+    private val folderRepository: FolderRepository
 ) {
     /**
      * 创建文件夹
@@ -81,4 +85,21 @@ class FolderController(
         ).map { ApiResponse(200, it, null) }
     }
 
+    @PutMapping
+    fun updateFolder(@RequestBody folderUpdateDto: FolderUpdateDto, exchange: ServerWebExchange): Mono<ApiResponse<Nothing>> {
+        val userId = exchange.attributes["userId"] as Int
+        return folderRepository.updateFolder(
+            userId = userId,
+            folderId = folderUpdateDto.id,
+            name = folderUpdateDto.name,
+            publicFlag = folderUpdateDto.publicFlag,
+            description = folderUpdateDto.description
+        ).flatMap {
+            if (it == 1) {
+                Mono.just(ApiResponse(200, "更新成功", null))
+            } else {
+                Mono.just(ApiResponse(400, "更新失败", null))
+            }
+        }
+    }
 }

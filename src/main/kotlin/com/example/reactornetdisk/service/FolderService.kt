@@ -37,6 +37,8 @@ class FolderService(
             Folder(
                 userId = userId,
                 parentId = parentId,
+                description = null,
+                publicFlag = false,
                 name = folderName
             )
         )
