@@ -5,9 +5,9 @@ spring:
     password: pWMR7nnEW2zcicKJ
 server:
   ssl:
-    key-store-password: 5ki1t7c077
+    key-store-password: c62386ss541480
     key-store-type: JKS
-    key-store: classpath:vps.dluserver.cn.jks
+    key-store: classpath:dluserver.cn.jks
 
 
 logging:

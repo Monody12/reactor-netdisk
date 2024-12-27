@@ -1,6 +1,6 @@
 spring:
   r2dbc:
-    url: r2dbc:mysql://vps.dluserver.cn:3306/reactor_netdisk
+    url: r2dbc:mysql://www.dluserver.cn:3306/reactor_netdisk
     username: reactor_netdisk
     password: pWMR7nnEW2zcicKJ
 #server:
