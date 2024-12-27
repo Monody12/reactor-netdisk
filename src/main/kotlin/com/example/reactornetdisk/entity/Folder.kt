@@ -8,7 +8,7 @@ class Folder(
     var parentId: Long?,
     var description: String?,
     var publicFlag: Boolean,
-    var name: String
+    var name: String,
 ) : BaseFile(isFolder = true) {
     constructor() : this(0, null, null, false, "")
 }

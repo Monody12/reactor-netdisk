@@ -29,9 +29,9 @@ class File(
      * 文件大小，单位字节
      */
     var size: Long,
-    var mimeType: String?
-) : BaseFile(isFolder = false) {
+    var mimeType: String?,
 
+) : BaseFile(isFolder = false) {
     override fun toString(): String {
         return "File(userId=$userId, folderId=$folderId, name='$name', publicFlag=$publicFlag, description=$description, pathName='$pathName', size=$size, mimeType=$mimeType)"
     }
