@@ -9,6 +9,6 @@ class Folder(
     var description: String?,
     var publicFlag: Boolean,
     var name: String
-) : BaseFile() {
+) : BaseFile(isFolder = true) {
     constructor() : this(0, null, null, false, "")
 }

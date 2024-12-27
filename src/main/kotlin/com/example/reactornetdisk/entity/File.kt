@@ -30,7 +30,8 @@ class File(
      */
     var size: Long,
     var mimeType: String?
-) : BaseFile() {
+) : BaseFile(isFolder = false) {
+
     override fun toString(): String {
         return "File(userId=$userId, folderId=$folderId, name='$name', publicFlag=$publicFlag, description=$description, pathName='$pathName', size=$size, mimeType=$mimeType)"
     }

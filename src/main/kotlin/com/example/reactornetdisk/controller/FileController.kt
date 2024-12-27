@@ -77,6 +77,11 @@ class FileController(
             }
     }
 
+    /**
+     * 判断文件类型是否为是否为Office
+     */
+
+    @ResponseBody
     @GetMapping("/files/download")
     fun downloadFile(
         @RequestParam fileId: Long,
