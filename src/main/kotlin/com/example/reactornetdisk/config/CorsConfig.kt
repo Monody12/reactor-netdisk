@@ -2,6 +2,8 @@ package com.example.reactornetdisk.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.reactive.CorsWebFilter
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource
@@ -10,6 +12,7 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource
 class CorsConfig {
 
     @Bean
+    @Order(value = Ordered.HIGHEST_PRECEDENCE + 1)
     fun corsWebFilter(): CorsWebFilter {
         val config = CorsConfiguration()
         config.addAllowedOrigin("https://www.dluserver.cn:8080")
@@ -25,4 +28,5 @@ class CorsConfig {
 
         return CorsWebFilter(source)
     }
+
 }

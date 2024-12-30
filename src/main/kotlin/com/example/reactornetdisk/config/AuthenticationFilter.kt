@@ -9,6 +9,8 @@ import com.example.reactornetdisk.repository.FileTokenRepository
 import com.example.reactornetdisk.repository.UserTokenRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.core.Ordered
+import org.springframework.data.domain.Sort.Order
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.r2dbc.core.DatabaseClient
@@ -21,7 +23,7 @@ import reactor.kotlin.core.publisher.switchIfEmpty
 import java.time.LocalDateTime
 
 @Component
-class AuthenticationFilter : WebFilter {
+class AuthenticationFilter : WebFilter , Ordered {
 
     @Autowired
     lateinit var userTokenRepository: UserTokenRepository
@@ -138,5 +140,9 @@ class AuthenticationFilter : WebFilter {
         val responseBody = ObjectMapper().writeValueAsString(apiResponse)
 
         return response.writeWith(Mono.just(response.bufferFactory().wrap(responseBody.toByteArray())))
+    }
+
+    override fun getOrder(): Int {
+        return Ordered.HIGHEST_PRECEDENCE + 2
     }
 }
