@@ -30,8 +30,14 @@ dependencies {
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // H2 JDBC driver for TestSchemaInitializer
+    testImplementation("com.h2database:h2")
     // MySQL Driver
     implementation("io.asyncer:r2dbc-mysql")
+    // H2 Driver for dev
+    implementation("io.r2dbc:r2dbc-h2")
+    // Validation
+    implementation("org.springframework.boot:spring-boot-starter-validation")
     // 推测文件名
     implementation("org.apache.tika:tika-core:2.9.2")
 }
@@ -48,4 +54,8 @@ tasks.withType<Test> {
 
 tasks.bootJar {
     archiveFileName.set("reactor-netdisk.jar")
+}
+
+tasks.bootRun {
+    args("--spring.profiles.active=dev")
 }

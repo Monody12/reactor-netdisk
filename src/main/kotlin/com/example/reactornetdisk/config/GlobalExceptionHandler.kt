@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.support.WebExchangeBindException
 import org.springframework.web.reactive.resource.NoResourceFoundException
 import org.springframework.web.server.ServerWebInputException
 import reactor.core.publisher.Mono
@@ -34,6 +35,14 @@ class GlobalExceptionHandler {
             is FileForbiddenException -> ApiResponse(403, ex.message ?: "", null)
             else -> ApiResponse(500, "未定义文件模块错误", ex.localizedMessage)
         }
+        return Mono.just(ResponseEntity(response, HttpStatus.OK))
+    }
+
+    @ExceptionHandler(WebExchangeBindException::class)
+    fun handleWebExchangeBindException(ex: WebExchangeBindException): Mono<ResponseEntity<ApiResponse<String>>> {
+        ex.printStackTrace()
+        val errors = ex.bindingResult.fieldErrors.joinToString(", ") { "${it.field}: ${it.defaultMessage}" }
+        val response: ApiResponse<String> = ApiResponse(400, "参数验证失败: $errors", null)
         return Mono.just(ResponseEntity(response, HttpStatus.OK))
     }
 

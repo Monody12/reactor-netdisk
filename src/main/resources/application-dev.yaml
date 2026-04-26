@@ -1,8 +1,12 @@
 spring:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-h2.sql
   r2dbc:
-    url: r2dbc:mysql://www.dluserver.cn:3306/reactor_netdisk
-    username: reactor_netdisk
-    password: pWMR7nnEW2zcicKJ
+    url: r2dbc:h2:file:///C:/Users/Administrator/IdeaProjects/reactor-netdisk/data/reactor_netdisk;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
 #server:
 #  ssl:
 #    key-store-password: 5ki1t7c077
@@ -17,4 +21,5 @@ logging:
 
 file:
   upload:
-    path: /Users/monody/Desktop/netdisk
+    path: D:\\Temp
+#    path: /Users/monody/Desktop/netdisk

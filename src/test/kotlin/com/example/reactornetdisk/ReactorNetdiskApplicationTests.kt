@@ -10,12 +10,14 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.ActiveProfiles
 import reactor.test.StepVerifier
 import java.io.File
 import java.nio.file.Path
 import java.time.LocalDateTime
 
 @SpringBootTest
+@ActiveProfiles("test")
 class ReactorNetdiskApplicationTests {
 
     @Test
@@ -39,12 +41,6 @@ class ReactorNetdiskApplicationTests {
 
     @Test
     fun selectUser() {
-//        StepVerifier.create(userService.getAllUsers())
-//            .thenConsumeWhile { user ->
-//                println(user)
-//                true
-//            }
-//            .verifyComplete()
         val users = userService.getAllUsers().collectList().block()
         users?.forEach { user -> println(user) }
     }
@@ -94,7 +90,5 @@ class ReactorNetdiskApplicationTests {
 
     @Test
     fun findFolderByPath() {
-//        val (userId, parentId, currentFolderName) = Triple(1, 1, "新建文件夹")
-//        folderRepository.findByUserIdAndParentIdAndName(userId, parentId, currentFolderName)
     }
 }
