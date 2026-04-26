@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
+    <title>文件夹上传测试</title>
+    <link rel="stylesheet" type="text/css" href="css/elementUI.css"/>
+    <script src="js/vue.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/axios.js" type="text/javascript"></script>
+    <script src="js/elementUI.js" type="text/javascript"></script>
+    <style>
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 40px;
+            text-align: center;
+            margin: 20px;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #409EFF;
+            background-color: #f5f7fa;
+        }
+        .upload-area.dragover {
+            border-color: #409EFF;
+            background-color: #ecf5ff;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .file-item .folder {
+            color: #E6A23C;
+        }
+        .file-item .file {
+            color: #909399;
+        }
+        .file-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            margin: 20px;
+        }
+        .upload-btn {
+            margin: 10px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-bar .progress {
+            height: 100%;
+            background-color: #409EFF;
+            transition: width 0.3s;
+        }
+        .info-box {
+            margin: 20px;
+            padding: 15px;
+            background-color: #f5f7fa;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <el-card>
+        <div slot="header">
+            <span>文件夹批量上传测试</span>
+        </div>
+
+        <el-form :inline="true" class="upload-options">
+            <el-form-item label="上传到文件夹ID">
+                <el-input-number v-model="parentId" :min="0" placeholder="留空或0表示根目录"></el-input-number>
+            </el-form-item>
+            <el-form-item label="公开文件">
+                <el-switch v-model="publicFlag"></el-switch>
+            </el-form-item>
+        </el-form>
+
+        <div class="upload-area" @click="triggerFileInput" @dragover.prevent="handleDragOver" @drop.prevent="handleDrop">
+            <i class="el-icon-upload" style="font-size: 60px; color: #c0c4cc;"></i>
+            <p>点击选择文件夹或将文件夹拖拽到此处</p>
+            <p style="color: #909399; font-size: 12px;">支持选择多个文件夹或混合选择文件和文件夹</p>
+        </div>
+
+        <!-- 普通文件选择 -->
+        <input type="file" ref="normalFileInput" @change="handleNormalFileSelect" multiple style="display: none;">
+
+        <!-- 文件夹选择（支持多选） -->
+        <input type="file" ref="folderInput" @change="handleFolderSelect" webkitdirectory multiple style="display: none;">
+
+        <div v-if="selectedFiles.length > 0" class="file-list">
+            <div class="info-box">
+                <p>已选择 <strong>{{ fileCount }}</strong> 个文件和 <strong>{{ folderCount }}</strong> 个文件夹</p>
+                <p>共 <strong>{{ selectedFiles.length }}</strong> 个项目</p>
+            </div>
+
+            <el-table :data="selectedFiles" style="width: 100%">
+                <el-table-column prop="name" label="文件名" width="300"></el-table-column>
+                <el-table-column prop="path" label="路径" width="400"></el-table-column>
+                <el-table-column prop="size" label="大小" width="150">
+                    <template slot-scope="scope">
+                        {{ formatSize(scope.row.size) }}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="type" label="类型">
+                    <template slot-scope="scope">
+                        <span :class="scope.row.isFolder ? 'folder' : 'file'">
+                            {{ scope.row.isFolder ? '文件夹' : '文件' }}
+                        </span>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </div>
+
+        <div v-if="uploading" class="info-box">
+            <p>上传进度: {{ uploadedCount }} / {{ totalCount }}</p>
+            <div class="progress-bar">
+                <div class="progress" :style="{ width: progressPercent + '%' }"></div>
+            </div>
+        </div>
+
+        <div v-if="uploadResult.length > 0" class="info-box" style="background-color: #f0f9eb; color: #67C23A;">
+            <p><strong>上传完成！</strong></p>
+            <p>成功上传 {{ uploadSuccessCount }} 个文件</p>
+            <p v-if="createdFolders.length > 0">创建了 {{ createdFolders.length }} 个文件夹</p>
+        </div>
+
+        <div style="margin: 20px;">
+            <el-button type="primary" @click="uploadFiles" :disabled="selectedFiles.length === 0 || uploading" class="upload-btn">
+                开始上传
+            </el-button>
+            <el-button @click="clearSelection" class="upload-btn">清空选择</el-button>
+            <el-button @click="selectNormalFiles" class="upload-btn">选择普通文件</el-button>
+            <el-button @click="selectFolder" class="upload-btn">选择文件夹</el-button>
+        </div>
+
+        <div v-if="errorMessage" class="info-box" style="background-color: #fef0f0; color: #F56C6C;">
+            <p><strong>错误：</strong></p>
+            <p>{{ errorMessage }}</p>
+        </div>
+    </el-card>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            parentId: null,
+            publicFlag: false,
+            selectedFiles: [],
+            uploading: false,
+            progressPercent: 0,
+            uploadedCount: 0,
+            totalCount: 0,
+            uploadResult: [],
+            createdFolders: [],
+            uploadSuccessCount: 0,
+            errorMessage: '',
+            token: null
+        },
+        computed: {
+            fileCount() {
+                return this.selectedFiles.filter(f => !f.isFolder).length;
+            },
+            folderCount() {
+                return this.selectedFiles.filter(f => f.isFolder).length;
+            }
+        },
+        created() {
+            this.loadUserInfo();
+        },
+        methods: {
+            loadUserInfo() {
+                const userinfo = localStorage.getItem('userinfo');
+                if (userinfo == null) {
+                    this.$message({ type: 'error', message: '请先登录!' });
+                    setTimeout(() => { window.location.href = 'login.html'; }, 1000);
+                    return;
+                }
+                this.token = JSON.parse(userinfo).token;
+                axios.defaults.headers.common['Authorization'] = this.token;
+            },
+            triggerFileInput() {
+                this.$refs.folderInput.click();
+            },
+            selectNormalFiles() {
+                this.$refs.normalFileInput.click();
+            },
+            selectFolder() {
+                this.$refs.folderInput.click();
+            },
+            handleNormalFileSelect(event) {
+                const files = event.target.files;
+                for (let i = 0; i < files.length; i++) {
+                    this.addFile(files[i], files[i].webkitRelativePath || files[i].name);
+                }
+            },
+            handleFolderSelect(event) {
+                const files = event.target.files;
+                for (let i = 0; i < files.length; i++) {
+                    this.addFile(files[i], files[i].webkitRelativePath);
+                }
+            },
+            handleDragOver(event) {
+                event.currentTarget.classList.add('dragover');
+            },
+            handleDrop(event) {
+                event.currentTarget.classList.remove('dragover');
+                const items = event.dataTransfer.items;
+                this.processDataTransferItems(items);
+            },
+            processDataTransferItems(items) {
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    if (item.kind === 'file') {
+                        const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+                        if (entry) {
+                            if (entry.isDirectory) {
+                                this.readFolder(entry, entry.fullPath || '/' + entry.name);
+                            } else {
+                                item.getAsFile().then(file => {
+                                    this.addFile(file, file.webkitRelativePath || file.name);
+                                });
+                            }
+                        } else {
+                            item.getAsFile().then(file => {
+                                this.addFile(file, file.webkitRelativePath || file.name);
+                            });
+                        }
+                    }
+                }
+            },
+            readFolder(folderEntry, basePath) {
+                const reader = folderEntry.createReader();
+                reader.readEntries((entries) => {
+                    for (let i = 0; i < entries.length; i++) {
+                        const entry = entries[i];
+                        const entryPath = basePath + '/' + entry.name;
+                        if (entry.isDirectory) {
+                            this.readFolder(entry, entryPath);
+                        } else {
+                            entry.file((file) => {
+                                this.addFile(file, entryPath);
+                            });
+                        }
+                    }
+                });
+            },
+            addFile(file, relativePath) {
+                // 清理路径开头的斜杠
+                relativePath = relativePath.replace(/^\/+/, '');
+
+                // 检查是否已存在
+                const exists = this.selectedFiles.some(f =>
+                    f.name === file.name && f.path === relativePath && f.size === file.size
+                );
+                if (!exists) {
+                    this.selectedFiles.push({
+                        name: file.name,
+                        path: relativePath,
+                        size: file.size,
+                        isFolder: false,
+                        file: file,
+                        fullPath: relativePath
+                    });
+                }
+            },
+            clearSelection() {
+                this.selectedFiles = [];
+                this.uploadResult = [];
+                this.createdFolders = [];
+                this.uploadSuccessCount = 0;
+                this.errorMessage = '';
+                this.$refs.normalFileInput.value = '';
+                this.$refs.folderInput.value = '';
+            },
+            formatSize(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            },
+            async uploadFiles() {
+                if (this.selectedFiles.length === 0) {
+                    this.$message({ type: 'warning', message: '请先选择文件' });
+                    return;
+                }
+
+                this.uploading = true;
+                this.progressPercent = 0;
+                this.uploadedCount = 0;
+                this.totalCount = this.selectedFiles.filter(f => !f.isFolder).length;
+                this.uploadResult = [];
+                this.createdFolders = [];
+                this.uploadSuccessCount = 0;
+                this.errorMessage = '';
+
+                const formData = new FormData();
+                // 添加父文件夹ID
+                if (this.parentId && this.parentId > 0) {
+                    formData.append('parentId', this.parentId);
+                }
+                formData.append('publicFlag', this.publicFlag);
+
+                // 添加文件
+                const fileItems = this.selectedFiles.filter(f => !f.isFolder);
+                for (const item of fileItems) {
+                    // 使用 webkitRelativePath 或 path 作为第三个参数（文件名包含路径）
+                    formData.append('files', item.file, item.fullPath);
+                }
+
+                try {
+                    console.log('开始上传，共', this.totalCount, '个文件');
+                    console.log('表单数据:', ...formData);
+
+                    const response = await axios.post('./api/upload/folder', formData, {
+                        headers: {
+                            'Authorization': this.token
+                        },
+                        onUploadProgress: (progressEvent) => {
+                            if (progressEvent.total) {
+                                this.progressPercent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                            }
+                        }
+                    });
+
+                    console.log('上传响应:', response.data);
+
+                    if (response.data.code === 200) {
+                        this.uploadResult = response.data.data || [];
+                        this.uploadSuccessCount = this.uploadResult.length;
+                        this.$message({ type: 'success', message: '上传完成!' });
+                    } else {
+                        this.errorMessage = response.data.msg || '上传失败';
+                        this.$message({ type: 'error', message: this.errorMessage });
+                    }
+                } catch (error) {
+                    console.error('上传错误:', error);
+                    this.errorMessage = error.response?.data?.msg || error.message || '上传失败';
+                    this.$message({ type: 'error', message: this.errorMessage });
+                } finally {
+                    this.uploading = false;
+                }
+            }
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 package com.example.reactornetdisk.controller
 
 import com.example.reactornetdisk.dto.FileUpdateDto
+import com.example.reactornetdisk.dto.FolderUploadRequest
 import com.example.reactornetdisk.dto.UploadForm
 import com.example.reactornetdisk.entity.ApiResponse
 import com.example.reactornetdisk.entity.FileToken
@@ -54,6 +55,45 @@ class FileController(
             }.doOnError { error ->
                 // 在这里处理错误，但不修改响应
                 println("文件上传失败: ${error.message}")
+            }
+    }
+
+    /**
+     * 上传文件夹（支持递归创建文件夹结构）
+     * 使用webkitRelativePath属性来确定文件在文件夹中的位置
+     * 请求格式：multipart/form-data
+     * - files: 文件列表（每个文件需要包含webkitRelativePath信息）
+     * - parentId: 目标父文件夹ID（可选，null表示根目录）
+     * - publicFlag: 是否公开（默认为false）
+     */
+    @PostMapping("/upload/folder")
+    fun uploadFolder(
+        @RequestPart("files") filePartFlux: Flux<FilePart>,
+        @ModelAttribute folderUploadRequest: FolderUploadRequest,
+        exchange: ServerWebExchange
+    ): Mono<ApiResponse<List<com.example.reactornetdisk.entity.File>>> {
+        val userId = exchange.attributes["userId"] as Int
+
+        // 将FilePart转换为包含relativePath的元组
+        // 注意：浏览器上传文件夹时，webkitRelativePath信息会包含在filename中（以路径形式）
+        // 例如：photos/vacation/IMG001.jpg
+        val filePartsWithPath = filePartFlux.map { filePart ->
+            val fullFilename = filePart.filename()
+            Pair(filePart, fullFilename)
+        }
+
+        return fileService.saveFilesWithFolderStructure(
+            filePartsWithPath = filePartsWithPath,
+            parentId = folderUploadRequest.parentId,
+            publicFlag = folderUploadRequest.publicFlag,
+            userId = userId
+        ).collectList()
+            .map {
+                ApiResponse(200, "文件夹上传完成", it)
+            }.doOnSuccess { response ->
+                println("文件夹上传成功: $response")
+            }.doOnError { error ->
+                println("文件夹上传失败: ${error.message}")
             }
     }
 

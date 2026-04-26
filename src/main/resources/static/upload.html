@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!--禁用缓存-->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
     <meta http-equiv="Pragma" content="no-cache"/>
     <meta http-equiv="Expires" content="0"/>
@@ -11,110 +10,770 @@
     <script src="js/vue.js" type="text/javascript" charset="utf-8"></script>
     <script src="js/axios.js" type="text/javascript"></script>
     <script src="js/elementUI.js" type="text/javascript"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 32px;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .upload-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-header h2 {
+            font-size: 18px;
+            font-weight: 500;
+        }
+        .upload-type-tabs {
+            display: flex;
+            gap: 10px;
+        }
+        .tab-btn {
+            padding: 8px 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 20px;
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            border-color: white;
+        }
+        .card-body {
+            padding: 30px;
+        }
+        .upload-options {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .option-item label {
+            color: #606266;
+            font-size: 14px;
+        }
+        .folder-select-area {
+            background: #f5f7fa;
+            border: 2px dashed #dcdfe6;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        .folder-select-area:hover {
+            border-color: #667eea;
+            background: #ecf5ff;
+        }
+        .folder-select-area.dragover {
+            border-color: #667eea;
+            background: #ecf5ff;
+            transform: scale(1.02);
+        }
+        .folder-icon {
+            font-size: 60px;
+            color: #c0c4cc;
+            margin-bottom: 15px;
+        }
+        .folder-select-area h3 {
+            color: #303133;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+        .folder-select-area p {
+            color: #909399;
+            font-size: 14px;
+        }
+        .file-list-container {
+            max-height: 350px;
+            overflow-y: auto;
+            border: 1px solid #ebeef5;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border-bottom: 1px solid #ebeef5;
+            transition: background 0.2s;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-item:hover {
+            background: #f5f7fa;
+        }
+        .file-icon {
+            font-size: 24px;
+            margin-right: 12px;
+        }
+        .file-icon.folder {
+            color: #E6A23C;
+        }
+        .file-icon.file {
+            color: #409EFF;
+        }
+        .file-info {
+            flex: 1;
+            overflow: hidden;
+        }
+        .file-name {
+            color: #303133;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .file-path {
+            color: #909399;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 4px;
+        }
+        .file-size {
+            color: #c0c4cc;
+            font-size: 12px;
+            margin-left: 15px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+        .upload-btn {
+            padding: 12px 40px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-default {
+            background: #f5f7fa;
+            color: #606266;
+            border: 1px solid #dcdfe6;
+        }
+        .btn-default:hover {
+            background: #ebeef5;
+        }
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+        .progress-container.show {
+            display: block;
+        }
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #606266;
+            font-size: 14px;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #ebeef5;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        .result-container {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 12px;
+            display: none;
+        }
+        .result-container.show {
+            display: block;
+        }
+        .result-success {
+            background: #f0f9eb;
+            border: 1px solid #e1f3d8;
+        }
+        .result-error {
+            background: #fef0f0;
+            border: 1px solid #fde2e2;
+        }
+        .result-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        .result-success .result-title {
+            color: #67C23A;
+        }
+        .result-error .result-title {
+            color: #F56C6C;
+        }
+        .result-stats {
+            color: #606266;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        .upload-hint {
+            text-align: center;
+            color: #909399;
+            font-size: 13px;
+            margin-top: 15px;
+        }
+        /* 普通上传样式 */
+        .normal-upload {
+            border: 2px dashed #dcdfe6;
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .normal-upload:hover {
+            border-color: #667eea;
+            background: #f5f7fa;
+        }
+        .normal-upload-icon {
+            font-size: 67px;
+            color: #c0c4cc;
+            margin-bottom: 15px;
+        }
+        .normal-upload h3 {
+            color: #303133;
+            margin-bottom: 8px;
+        }
+        .normal-upload p {
+            color: #909399;
+            font-size: 14px;
+        }
+        .hidden-input {
+            display: none;
+        }
+        .current-folder {
+            background: #f5f7fa;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .current-folder-icon {
+            font-size: 24px;
+            color: #E6A23C;
+        }
+        .current-folder-info {
+            flex: 1;
+        }
+        .current-folder-label {
+            color: #909399;
+            font-size: 12px;
+        }
+        .current-folder-path {
+            color: #303133;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .switch-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .switch-label {
+            color: #606266;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
-<div id="app">
-    <el-upload
-            class="upload-demo"
-            drag
-            action="./api/upload"
-            :headers="headerObj"
-            :data="upload_param"
-            :on-preview="handlePreview"
-            :on-remove="handleRemove"
-            :file-list="fileList"
-            list-type="picture"
-            name="files"
-            multiple>
-        <i class="el-icon-upload"></i>
-        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
-        <div class="el-upload__tip" slot="tip">上传至文件夹：{{upload_param.path}}</div>
-        <div class="el-upload__tip" slot="tip">
-            <label for="publicFlag">公开本次上传文件：</label>
-            <input type="checkbox" id="publicFlag" name="publicFlag" v-model="upload_param.publicFlag" />
+<div id="app" class="container">
+    <div class="header">
+        <h1>文件上传</h1>
+        <p>支持普通文件和文件夹批量上传</p>
+    </div>
+
+    <div class="upload-card">
+        <div class="card-header">
+            <h2>
+                <i class="el-icon-upload" style="margin-right: 8px;"></i>
+                上传文件
+            </h2>
+            <div class="upload-type-tabs">
+                <button class="tab-btn" :class="{active: uploadType === 'normal'}" @click="uploadType = 'normal'">
+                    普通上传
+                </button>
+                <button class="tab-btn" :class="{active: uploadType === 'folder'}" @click="uploadType = 'folder'">
+                    文件夹上传
+                </button>
+            </div>
         </div>
-    </el-upload>
+
+        <div class="card-body">
+            <!-- 上传选项 -->
+            <div class="upload-options">
+                <div class="option-item">
+                    <label>上传至：</label>
+                    <el-tag type="warning" size="medium">
+                        <i class="el-icon-folder-opened"></i>
+                        {{ upload_param.path || '根目录' }}
+                    </el-tag>
+                </div>
+                <div class="switch-wrapper">
+                    <span class="switch-label">公开文件：</span>
+                    <el-switch v-model="upload_param.publicFlag"></el-switch>
+                </div>
+            </div>
+
+            <!-- 普通文件上传 -->
+            <div v-if="uploadType === 'normal'">
+                <el-upload
+                    ref="normalUpload"
+                    class="hidden-upload"
+                    :action="'./api/upload'"
+                    :headers="headerObj"
+                    :data="upload_param"
+                    :on-success="handleUploadSuccess"
+                    :on-error="handleUploadError"
+                    :on-progress="handleProgress"
+                    name="files"
+                    multiple
+                    :show-file-list="false"
+                    :hidden="true">
+                </el-upload>
+
+                <div class="normal-upload" @click="triggerNormalUpload">
+                    <div class="normal-upload-icon">
+                        <i class="el-icon-upload"></i>
+                    </div>
+                    <h3>点击选择文件</h3>
+                    <p>或将文件拖拽到此处</p>
+                </div>
+            </div>
+
+            <!-- 文件夹上传 -->
+            <div v-if="uploadType === 'folder'">
+                <input type="file" ref="folderInput" webkitdirectory multiple @change="handleFolderSelect" class="hidden-input">
+                <input type="file" ref="normalFileInput" multiple @change="handleNormalFileSelect" class="hidden-input">
+
+                <div class="folder-select-area"
+                     @click="triggerFolderSelect"
+                     @dragover.prevent="handleDragOver"
+                     @dragleave="handleDragLeave"
+                     @drop.prevent="handleDrop">
+                    <div class="folder-icon">
+                        <i class="el-icon-folder-opened"></i>
+                    </div>
+                    <h3>点击选择文件夹</h3>
+                    <p>或将文件夹拖拽到此处上传整个目录结构</p>
+                    <p style="margin-top: 10px; color: #c0c4cc;">
+                        <el-button size="mini" type="primary" plain @click.stop="triggerNormalFileSelect">
+                            <i class="el-icon-plus"></i> 混合选择（文件夹+文件）
+                        </el-button>
+                    </p>
+                </div>
+
+                <!-- 已选择的文件列表 -->
+                <div v-if="selectedFiles.length > 0" class="file-list-container">
+                    <div v-for="(file, index) in selectedFiles" :key="index" class="file-item">
+                        <i :class="['file-icon', file.isFolder ? 'folder' : 'file', 'el-icon-' + (file.isFolder ? 'folder' : getFileIcon(file.name))]"></i>
+                        <div class="file-info">
+                            <div class="file-name">{{ file.name }}</div>
+                            <div class="file-path">{{ file.relativePath }}</div>
+                        </div>
+                        <span class="file-size">{{ formatSize(file.size) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 上传进度 -->
+            <div class="progress-container" :class="{show: uploading}">
+                <div class="progress-info">
+                    <span>上传进度</span>
+                    <span>{{ uploadedCount }} / {{ totalCount }}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" :style="{width: progressPercent + '%'}"></div>
+                </div>
+            </div>
+
+            <!-- 上传结果 -->
+            <div v-if="uploadMessage" class="result-container show" :class="uploadSuccess ? 'result-success' : 'result-error'">
+                <div class="result-title">
+                    <i :class="uploadSuccess ? 'el-icon-success' : 'el-icon-error'"></i>
+                    {{ uploadSuccess ? '上传成功' : '上传失败' }}
+                </div>
+                <div class="result-stats" v-html="uploadMessage"></div>
+            </div>
+
+            <!-- 提示信息 -->
+            <div class="upload-hint" v-if="!uploading && !uploadMessage">
+                <p v-if="uploadType === 'normal'">支持多选文件，文件将上传到当前目录</p>
+                <p v-if="uploadType === 'folder'">
+                    选择文件夹后，系统会自动创建所需的目录结构<br>
+                    支持拖拽上传，可混合选择文件和文件夹
+                </p>
+            </div>
+
+            <!-- 按钮组 -->
+            <div class="btn-group">
+                <button class="upload-btn btn-primary"
+                        @click="startUpload"
+                        :disabled="uploading || (uploadType === 'folder' && selectedFiles.length === 0)">
+                    <i class="el-icon-upload"></i>
+                    {{ uploading ? '上传中...' : '开始上传' }}
+                </button>
+                <button class="upload-btn btn-default" @click="clearSelection" v-if="selectedFiles.length > 0">
+                    <i class="el-icon-delete"></i>
+                    清空选择
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 </body>
 <script>
     new Vue({
-        //作用域
         el: '#app',
-        //初始化数据
         data: {
-            title: 'HelloWorld',
-            radio: '1',
-            input: undefined,
-            fileList: undefined,
+            uploadType: 'normal', // 'normal' or 'folder'
+            selectedFiles: [],
+            uploading: false,
+            progressPercent: 0,
+            uploadedCount: 0,
+            totalCount: 0,
+            uploadMessage: '',
+            uploadSuccess: false,
+            fileList: [],
             upload_param: {
                 username: 'test',
                 path: '/',
-                folderId : null,
+                folderId: null,
                 publicFlag: false
             },
-            headerObj:{
+            headerObj: {
                 Authorization: null
             }
         },
-        // 初始化用户信息
         created: function () {
-            debugger
-            this.upload_param.path = localStorage.getItem("folderPath")
-            this.upload_param.folderId = localStorage.getItem("folderId")
-            // 获取登录token
-            let userinfo = localStorage.getItem("userinfo")
+            this.upload_param.path = localStorage.getItem("folderPath") || '/';
+            this.upload_param.folderId = localStorage.getItem("folderId") ? parseInt(localStorage.getItem("folderId")) : null;
+
+            let userinfo = localStorage.getItem("userinfo");
             if (userinfo == null) {
-                this.$message({
-                    type: 'error',
-                    message: '请先登录!'
-                });
-                window.location.href = "login.html"
+                this.$message({ type: 'error', message: '请先登录!' });
+                setTimeout(() => { window.location.href = "login.html"; }, 1000);
+                return;
             }
-            let token = JSON.parse(userinfo).token
-            console.log("token", token)
-            axios.defaults.headers.common['Authorization'] = token
-            this.headerObj.Authorization = token
+            let token = JSON.parse(userinfo).token;
+            axios.defaults.headers.common['Authorization'] = token;
+            this.headerObj.Authorization = token;
         },
-        //函数写在这里
         methods: {
-            handlePreview(file) {
-                console.log(file)
-                window.open(file.url, '_blank')
+            triggerNormalUpload() {
+                this.$refs.normalUpload.$refs['upload-inner'].handleClick();
             },
-            handleRemove(file, fileList) {
-                console.log(file, fileList)
-                console.log("选中文件的id为：", file.response.data[0].id)
-                this.$confirm('是否同时删除文件？', '提示', {
-                    confirmButtonText: '确定',
-                    cancelButtonText: '取消',
-                    type: 'warning'
-                }).then(() => {
-                    var params = new URLSearchParams()
-                    params.append("fileIdList", file.response.data[0].id)
-                    axios.delete('/api/folder?'+params.toString()).then(res => {
-                        var info = res.data.code
-                        if (info === 200) {
-                            this.$message({
-                                type: 'success',
-                                message: res.data.msg
-                            });
+            triggerFolderSelect() {
+                this.$refs.folderInput.click();
+            },
+            triggerNormalFileSelect() {
+                this.$refs.normalFileInput.click();
+            },
+            handleFolderSelect(event) {
+                const files = event.target.files;
+                this.addFiles(files);
+            },
+            handleNormalFileSelect(event) {
+                const files = event.target.files;
+                this.addFiles(files);
+            },
+            addFiles(files) {
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const relativePath = file.webkitRelativePath || file.name;
+
+                    // 检查是否已存在
+                    const exists = this.selectedFiles.some(f =>
+                        f.name === file.name && f.relativePath === relativePath && f.size === file.size
+                    );
+                    if (!exists) {
+                        this.selectedFiles.push({
+                            name: file.name,
+                            relativePath: relativePath,
+                            size: file.size,
+                            file: file,
+                            isFolder: false
+                        });
+                    }
+                }
+            },
+            handleDragOver(event) {
+                event.currentTarget.classList.add('dragover');
+            },
+            handleDragLeave(event) {
+                event.currentTarget.classList.remove('dragover');
+            },
+            handleDrop(event) {
+                event.currentTarget.classList.remove('dragover');
+                const items = event.dataTransfer.items;
+                this.processDataTransferItems(items);
+            },
+            processDataTransferItems(items) {
+                const promises = [];
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    if (item.kind === 'file') {
+                        const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+                        if (entry) {
+                            if (entry.isFile) {
+                                promises.push(this.processFileEntry(entry, item.getAsFile()));
+                            } else if (entry.isDirectory) {
+                                promises.push(this.processDirectoryEntry(entry));
+                            }
                         } else {
-                            this.$message({
-                                type: 'error',
-                                message: res.data.msg
+                            const filePromise = item.getAsFile().then(file => {
+                                if (file) {
+                                    this.addFiles([file]);
+                                }
+                            });
+                            promises.push(filePromise);
+                        }
+                    }
+                }
+            },
+            processFileEntry(entry, file) {
+                return new Promise((resolve) => {
+                    if (file) {
+                        const relativePath = file.webkitRelativePath || file.name;
+                        const exists = this.selectedFiles.some(f =>
+                            f.name === file.name && f.relativePath === relativePath && f.size === file.size
+                        );
+                        if (!exists) {
+                            this.selectedFiles.push({
+                                name: file.name,
+                                relativePath: relativePath,
+                                size: file.size,
+                                file: file,
+                                isFolder: false
                             });
                         }
-                    })
-
-                }).catch(() => {
-                    this.$message({
-                        type: 'info',
-                        message: '仅从列表中移除'
+                    }
+                    resolve();
+                });
+            },
+            processDirectoryEntry(dirEntry) {
+                return new Promise((resolve) => {
+                    const reader = dirEntry.createReader();
+                    reader.readEntries((entries) => {
+                        const promises = [];
+                        for (let i = 0; i < entries.length; i++) {
+                            const entry = entries[i];
+                            if (entry.isFile) {
+                                promises.push(new Promise((res) => {
+                                    entry.file((file) => {
+                                        const basePath = dirEntry.fullPath || '/' + dirEntry.name;
+                                        const relativePath = basePath + '/' + file.name;
+                                        const exists = this.selectedFiles.some(f =>
+                                            f.name === file.name && f.relativePath === relativePath && f.size === file.size
+                                        );
+                                        if (!exists) {
+                                            this.selectedFiles.push({
+                                                name: file.name,
+                                                relativePath: relativePath.replace(/^\/+/, ''),
+                                                size: file.size,
+                                                file: file,
+                                                isFolder: false
+                                            });
+                                        }
+                                        res();
+                                    });
+                                }));
+                            } else if (entry.isDirectory) {
+                                promises.push(this.processDirectoryEntry(entry));
+                            }
+                        }
+                        Promise.all(promises).then(resolve);
                     });
                 });
-            }
+            },
+            formatSize(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            },
+            getFileIcon(filename) {
+                const ext = filename.split('.').pop().toLowerCase();
+                const iconMap = {
+                    'jpg': 'picture', 'jpeg': 'picture', 'png': 'picture', 'gif': 'picture', 'bmp': 'picture',
+                    'pdf': 'document', 'doc': 'document', 'docx': 'document', 'xls': 'document', 'xlsx': 'document',
+                    'ppt': 'document', 'pptx': 'document', 'txt': 'document',
+                    'zip': 'folder', 'rar': 'folder', '7z': 'folder', 'tar': 'folder', 'gz': 'folder',
+                    'mp3': 'video', 'mp4': 'video', 'avi': 'video', 'mov': 'video', 'wmv': 'video',
+                    'js': 'code', 'java': 'code', 'py': 'code', 'cpp': 'code', 'c': 'code', 'h': 'code'
+                };
+                return iconMap[ext] || 'document';
+            },
+            clearSelection() {
+                this.selectedFiles = [];
+                this.uploadMessage = '';
+                this.uploadSuccess = false;
+                if (this.$refs.folderInput) this.$refs.folderInput.value = '';
+                if (this.$refs.normalFileInput) this.$refs.normalFileInput.value = '';
+            },
+            startUpload() {
+                if (this.uploadType === 'normal') {
+                    this.triggerNormalUpload();
+                } else {
+                    this.uploadFolder();
+                }
+            },
+            async uploadFolder() {
+                if (this.selectedFiles.length === 0) {
+                    this.$message({ type: 'warning', message: '请先选择文件' });
+                    return;
+                }
 
+                this.uploading = true;
+                this.progressPercent = 0;
+                this.uploadedCount = 0;
+                this.totalCount = this.selectedFiles.length;
+                this.uploadMessage = '';
+
+                const formData = new FormData();
+                if (this.upload_param.folderId && this.upload_param.folderId > 0) {
+                    formData.append('parentId', this.upload_param.folderId);
+                }
+                formData.append('publicFlag', this.upload_param.publicFlag);
+
+                for (const item of this.selectedFiles) {
+                    formData.append('files', item.file, item.relativePath);
+                }
+
+                try {
+                    const response = await axios.post('./api/upload/folder', formData, {
+                        headers: {
+                            'Authorization': this.headerObj.Authorization
+                        },
+                        onUploadProgress: (progressEvent) => {
+                            if (progressEvent.total) {
+                                this.progressPercent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                            }
+                        }
+                    });
+
+                    if (response.data.code === 200) {
+                        this.uploadSuccess = true;
+                        const result = response.data.data || [];
+                        this.uploadedCount = result.length;
+
+                        let createdFolders = new Set();
+                        result.forEach(f => {
+                            if (f.folderId && f.folderId > 0) {
+                                createdFolders.add(f.folderId);
+                            }
+                        });
+
+                        this.uploadMessage = `
+                            成功上传 <strong>${this.uploadedCount}</strong> 个文件<br>
+                            ${createdFolders.size > 0 ? `创建了 <strong>${createdFolders.size}</strong> 个文件夹` : ''}
+                        `;
+                        this.$message({ type: 'success', message: '上传完成!' });
+                        this.selectedFiles = [];
+                    } else {
+                        throw new Error(response.data.msg || '上传失败');
+                    }
+                } catch (error) {
+                    this.uploadSuccess = false;
+                    this.uploadMessage = error.response?.data?.msg || error.message || '上传失败，请重试';
+                    this.$message({ type: 'error', message: this.uploadMessage });
+                } finally {
+                    this.uploading = false;
+                }
+            },
+            handleUploadSuccess(response, file, fileList) {
+                console.log('Upload success:', response);
+                this.$message({
+                    type: 'success',
+                    message: `成功上传 ${fileList.length} 个文件!`
+                });
+            },
+            handleUploadError(err, file, fileList) {
+                console.error('Upload error:', err);
+                this.$message({
+                    type: 'error',
+                    message: '上传失败: ' + (err.message || '未知错误')
+                });
+            },
+            handleProgress(event, file, fileList) {
+                console.log('Progress:', event.percent);
+            }
         }
-    })
+    });
 </script>
 </html>
