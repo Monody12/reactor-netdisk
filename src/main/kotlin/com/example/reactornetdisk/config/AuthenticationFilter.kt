@@ -35,9 +35,9 @@ class AuthenticationFilter : WebFilter , Ordered {
     lateinit var fileRepository: FileRepository
 
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
-        // 如果url是登录接口、静态资源，直接放行
+        // 如果url是登录接口、注册接口、静态资源，直接放行
         val url = exchange.request.uri.path
-        if (url == "/api/user/login" || url.startsWith("/api").not()) {
+        if (url == "/api/user/login" || url == "/api/user/register" || url.startsWith("/api").not()) {
             return chain.filter(exchange)
         }
         // 如果访问文件资源，则需要校验token
