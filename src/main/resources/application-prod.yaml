@@ -1,4 +1,7 @@
 spring:
+  sql:
+    init:
+      mode: never
   r2dbc:
     url: r2dbc:mysql://127.0.0.1:3306/reactor_netdisk
     username: reactor_netdisk
