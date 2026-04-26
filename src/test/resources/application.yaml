@@ -1,0 +1,13 @@
+spring:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-h2.sql
+  r2dbc:
+    url: r2dbc:h2:file:///C:/Users/Administrator/IdeaProjects/reactor-netdisk/data/test_reactor_netdisk
+    username: sa
+    password:
+
+logging:
+  level:
+    root: WARN
