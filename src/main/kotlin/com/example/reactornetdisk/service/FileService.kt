@@ -162,7 +162,8 @@ class FileService(
             }
             .defaultIfEmpty(Folder())
             .thenMany(filePartsWithPath)
-            .flatMap { (filePart, relativePath) ->
+            // 使用 concatMap 串行处理每个文件，避免并发创建相同文件夹导致冲突
+            .concatMap { (filePart, relativePath) ->
                 val pathParts = relativePath.split("/").filter { it.isNotEmpty() }
                 if (pathParts.isEmpty()) {
                     // 没有路径信息，直接上传到父文件夹
@@ -235,6 +236,26 @@ class FileService(
                             updatedCache[currentPathKey] = savedFolder.id!!
                             folderCache.set(updatedCache)
                             createFoldersRecursively(userId, savedFolder.id, folderNames.drop(1), folderCache)
+                        }
+                        .onErrorResume { error ->
+                            // 唯一约束冲突说明另一个并发请求已经创建了该文件夹
+                            // 此时直接查询并使用已存在的文件夹
+                            val isDuplicateKeyError = error.message?.contains("Duplicate entry") == true ||
+                                error.message?.contains("unique constraint") == true ||
+                                error.message?.contains("23505") == true ||
+                                error.message?.contains("org.springframework.dao") == true
+
+                            if (isDuplicateKeyError) {
+                                folderRepository.findByUserIdAndParentIdAndName(userId, parentId, currentFolderName)
+                                    .flatMap { existingFolder ->
+                                        val updatedCache = folderCache.get().toMutableMap()
+                                        updatedCache[currentPathKey] = existingFolder.id!!
+                                        folderCache.set(updatedCache)
+                                        createFoldersRecursively(userId, existingFolder.id, folderNames.drop(1), folderCache)
+                                    }
+                            } else {
+                                Mono.error(error)
+                            }
                         }
                 }
             )
