@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS `folder` (
     `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `delete_flag` tinyint(1) NOT NULL DEFAULT '0',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `folder_name_index` (`name`) COMMENT '唯一索引',
+    UNIQUE KEY `folder_user_parent_name_index` (`user_id`, `parent_id`, `name`) COMMENT '同一用户同一目录下不允许同名文件夹',
     KEY `idx_user_folder` (`user_id`,`parent_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
