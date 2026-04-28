@@ -1,18 +1,11 @@
 spring:
   sql:
     init:
-      mode: always
-      schema-locations: classpath:schema-h2.sql
+      mode: never
   r2dbc:
-    url: r2dbc:h2:file:///C:/Users/Administrator/IdeaProjects/reactor-netdisk/data/reactor_netdisk;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: sa
-    password:
-#server:
-#  ssl:
-#    key-store-password: 5ki1t7c077
-#    key-store-type: JKS
-#    key-store: classpath:vps.dluserver.cn.jks
-
+    url: r2dbc:mysql://127.0.0.1:3306/reactor_netdisk_test
+    username: reactor_netdisk_test
+    password: jKdH38Js2S72CykW
 
 logging:
   level:

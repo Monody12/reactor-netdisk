@@ -1,12 +1,11 @@
 spring:
   sql:
     init:
-      mode: always
-      schema-locations: classpath:schema-h2.sql
+      mode: never
   r2dbc:
-    url: r2dbc:h2:mem:///testdb;MODE=MySQL
-    username: sa
-    password:
+    url: r2dbc:mysql://127.0.0.1:3306/reactor_netdisk
+    username: reactor_netdisk
+    password: pWMR7nnEW2zcicKJ
 
 logging:
   level:
